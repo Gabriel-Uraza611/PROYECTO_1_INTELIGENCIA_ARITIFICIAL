@@ -2,6 +2,7 @@
 ### Profesor: Joshua Triana Madrid
 ## Desarrolladores:
 > Gabriel Uraza - 2359594-3743
+> Juan Bolaños  - 2380616-3743
 ### Descripción: 
 Vamos a resolver un problema clásico, donde la hormiga debe encontrar el hongo mágico, y
 puede pasar por venenos.
