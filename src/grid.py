@@ -10,6 +10,7 @@ Responsabilidades:
 
 # src/grid.py
 import pygame
+import random
 
 class Grid:
     def __init__(self, rows, cols, cell_size):
@@ -23,9 +24,21 @@ class Grid:
 
     def get_cell(self, r, c):
         return self.matrix[r][c]
+    
+    def clear_enemies(self):
+        """Elimina solo las celdas que contienen enemigos (valor 2)."""
+        for r in range(self.rows):
+            for c in range(self.cols):
+                if self.matrix[r][c] == 2:
+                    self.matrix[r][c] = 0
+
+    def get_random_empty_cell(self):
+        """Devuelve una celda vacía al azar (fila, col)."""
+        empty_cells = [(r, c) for r in range(self.rows)
+                       for c in range(self.cols) if self.matrix[r][c] == 0]
+        return random.choice(empty_cells) if empty_cells else None
 
     def draw(self, surface, offset_x=0, offset_y=0):
-        # Dibujar líneas de cuadrícula
         for r in range(self.rows):
             for c in range(self.cols):
                 rect = pygame.Rect(
