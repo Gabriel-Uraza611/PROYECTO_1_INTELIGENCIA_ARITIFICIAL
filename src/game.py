@@ -22,6 +22,8 @@ class Game:
         #general
         pygame.init()
         pygame.mixer.init()
+        
+
         pygame.display.set_caption("BeamSearch & DynamicWeighting")
         pygame.display.set_icon(pygame.image.load("assets/images & sprites/logo.png"))
 
@@ -30,13 +32,22 @@ class Game:
         pygame.mixer.music.set_volume(0.5)
         pygame.mixer.music.play(-1)
 
+        #MUSIQUITA JUEGO ALCANZADO
+        self.goal_sound = pygame.mixer.Sound("assets/audio/get_goal_sfx.mp3")
+        self.goal_sound.set_volume(0.6)
+        self.goal_reached = False
+        self.goal_highlight = None
+
+
         # --- Dimensiones generales ---
-        self.WIDTH, self.HEIGHT = 800, 500
+        self.WIDTH, self.HEIGHT = 1024, 576
         self.ROOT = pygame.display.set_mode((self.WIDTH, self.HEIGHT))
+        self.background = pygame.image.load("assets/images & sprites/backstage.png")
+        self.background = pygame.transform.scale(self.background, (self.WIDTH, self.HEIGHT))
         self.clock = pygame.time.Clock()
 
         # --- Área de juego (zona interna) ---
-        self.GAME_AREA = pygame.Rect(0, 0, 500, 500)
+        self.GAME_AREA = pygame.Rect(120, 38, 500, 500)
 
         # --- Crear grid lógico (5x5 con celdas de 100 px) ---
         self.grid = Grid(7, 7, self.GAME_AREA.width, self.GAME_AREA.height)
@@ -48,7 +59,8 @@ class Game:
         # Nota: aquí pasas coordenadas en píxeles a Player/Goal según su constructor actual
         # He puesto posiciones fijas (ajusta si quieres que Player use celdas del grid)
         self.player = Player(10, 3, "assets/images & sprites/cute_hornet.png",
-                             (self.GAME_AREA.width, self.GAME_AREA.height))
+                     (self.GAME_AREA.x, self.GAME_AREA.y, self.GAME_AREA.width, self.GAME_AREA.height))
+
         self.goal = Goal(400, 395, "assets/images & sprites/Seek_Quest_Icon.png",
                          (self.GAME_AREA.width, self.GAME_AREA.height))
 
@@ -56,7 +68,7 @@ class Game:
         self.enemies = []
 
         # --- Panel lateral ---
-        self.panel_rect = pygame.Rect(self.GAME_AREA.width + 20, 40, 250, 300)
+        self.panel_rect = pygame.Rect(self.GAME_AREA.width + 190, 110, 250, 300)
 
         # --- Generar enemigos aleatorios (solo al iniciar) ---
         self.spawn_random_enemies()
@@ -150,6 +162,9 @@ class Game:
                 e.resize_to_cell(self.grid.cell_size)
 
             self.reset_positions()
+            self.goal_highlight = None
+            self.goal_reached = False
+
 
     
     def reset_positions(self):
@@ -203,6 +218,23 @@ class Game:
         else:
             pygame.mixer.music.set_volume(0)    # silenciar
             self.muted = True
+    
+    def handle_goal_reached(self):
+        if not self.goal_reached:
+            self.goal_reached = True
+            print("Meta alcanzada") 
+
+            # --- pausar la música de fondo ---
+            pygame.mixer.music.pause()
+
+            # --- reproducir sonido corto de meta alcanzada ---
+            self.goal_sound.play()
+
+            # --- marcar celda verde ---
+            self.goal_highlight = (self.grid.rows - 1, self.grid.cols - 1)
+
+            # --- esperar un instante y reanudar música ---
+            pygame.time.set_timer(pygame.USEREVENT + 1, 1000)  # 1000 ms = 1 seg
 
     # =============== EVENTOS =================
     def handle_events(self):
@@ -210,6 +242,10 @@ class Game:
             if event.type == pygame.QUIT:
                 pygame.quit()
                 sys.exit()
+             # --- evento para reanudar música ---
+            if event.type == pygame.USEREVENT + 1:
+                pygame.mixer.music.unpause()
+                pygame.time.set_timer(pygame.USEREVENT + 1, 0)  # desactiva el timer
             if event.type == pygame.MOUSEBUTTONDOWN:
                 # activar o desactivar input box
                 if self.input_box.collidepoint(event.pos):
@@ -231,7 +267,7 @@ class Game:
 
 
     def handle_click(self, pos):
-        # comprobamos botones - reiniciar llamará a spawn_random_enemies
+        # comprobamos botones - reiniciar llamará a spawn_random_enemies -------------> OJO BORRAR PRINTS CUANDO SE TERMINE EL PROYECTO
         if self.btn_beam.collidepoint(pos):
             print("Beam Search seleccionado")
         elif self.btn_dynamic.collidepoint(pos):
@@ -254,11 +290,16 @@ class Game:
         self.goal.update()
         for e in self.enemies:
             e.update()
+        # Detectar si el jugador alcanzó la meta (solo una vez)
+        if not self.goal_reached and self.player.rect.colliderect(self.goal.rect):
+            self.handle_goal_reached()
+            self.goal_reached = True
+
 
     # =============== DIBUJO =================
     def draw(self):
         # fondo global
-        self.ROOT.fill((30, 30, 30))
+        self.ROOT.blit(self.background, (0, 0))
 
         # área de juego (blanco) y su borde
         pygame.draw.rect(self.ROOT, (255, 255, 255), self.GAME_AREA)
@@ -267,6 +308,18 @@ class Game:
 
         # dibujar la grid (usa offsets como ya lo haces)
         self.grid.draw(self.ROOT, self.GAME_AREA.x, self.GAME_AREA.y)
+        # Si la meta fue alcanzada, pinta la celda de verde
+        if self.goal_highlight:
+            r, c = self.goal_highlight
+            rect = pygame.Rect(
+                self.GAME_AREA.x + c * self.grid.cell_size,
+                self.GAME_AREA.y + r * self.grid.cell_size,
+                self.grid.cell_size,
+                self.grid.cell_size
+            )
+            pygame.draw.rect(self.ROOT, (0, 255, 0), rect)  # verde fuerte
+            pygame.draw.rect(self.ROOT, (0, 0, 0), rect, 2)  # borde negro opcional
+
 
         # Dibujar enemigos
         for enemy in self.enemies:
@@ -277,7 +330,9 @@ class Game:
         self.ROOT.blit(self.player.image, (self.player.rect.x, self.player.rect.y))
 
         # Panel lateral y botones
-        pygame.draw.rect(self.ROOT, (255, 255, 255), self.panel_rect, border_radius=15)
+        # Crear una superficie semitransparente para el panel
+        pygame.draw.rect(self.ROOT, (161, 240, 206), self.panel_rect, border_radius=15)
+
         font = pygame.font.SysFont("Verdana", 18, bold=True)
         self.ROOT.blit(font.render("Opciones de búsqueda", True, (0, 0, 0)),
                        (self.panel_rect.x + 12, self.panel_rect.y + 20))
@@ -286,7 +341,7 @@ class Game:
         # dibujar botones
         font_btn = pygame.font.SysFont("Verdana", 14, bold=True)
         buttons = [self.btn_beam, self.btn_dynamic, self.btn_reiniciar, self.btn_cerrar, self.btn_redefinir]
-        colors = [(74, 222, 252), (74, 222, 252), (74, 222, 252), (255, 0, 0), (74, 222, 252)]
+        colors = [(86, 227, 159), (86, 227, 159), (86, 227, 159), (239, 111, 108), (86, 227, 159)] #COLOR BOTONES
         texts = ["Beam Search", "Dynamic W.", "Reiniciar", "Cerrar", "Redefinir"]
 
         for b, c, t in zip(buttons, colors, texts):
