@@ -62,14 +62,13 @@ class Game:
         self.GAME_AREA = pygame.Rect(120, 38, 500, 500)
 
         # --- Crear grid lógico (5x5 con celdas de 100 px) ---
-        self.grid = Grid(7, 7, self.GAME_AREA.width, self.GAME_AREA.height)
+        self.grid = Grid(8, 8, self.GAME_AREA.width, self.GAME_AREA.height)
 
         # --- Guardar referencia a la clase Enemy para crear instancias ---
         self.enemy_class = Entity
 
         # --- Crear entidades fijas (player y goal) ---
-        # Nota: aquí pasas coordenadas en píxeles a Player/Goal según su constructor actual
-        # He puesto posiciones fijas (ajusta si quieres que Player use celdas del grid)
+
         self.player = Player(10, 3, "assets/images & sprites/cute_hornet.png",
                      (self.GAME_AREA.x, self.GAME_AREA.y, self.GAME_AREA.width, self.GAME_AREA.height))
 
@@ -144,12 +143,12 @@ class Game:
         try:
             size = int(self.user_text)
             # --- validar rango permitido ---
-            if size < 2 or size > 12:
+            if size < 2 or size > 16:
                 # crear ventana tkinter temporal para mostrar warning
                 root = tk.Tk()
                 root.withdraw()  # oculta ventana principal
                 messagebox.showwarning("Tamaño inválido",
-                                    "No puedes generar matrices menores a 2x2 ni mayores a 12x12")
+                                    "No puedes generar matrices menores a 2x2 ni mayores a 12x15")
                 root.destroy()
                 return
 
