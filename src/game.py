@@ -109,103 +109,7 @@ class Game:
         self.btn_reiniciar = pygame.Rect(self.panel_rect.x + 30, self.panel_rect.y +  188, 80, 40)
         self.btn_cerrar = pygame.Rect(self.panel_rect.x + 70, self.panel_rect.y + 235, 90, 40)
 
-    # ----------------- método que antes estaba anidado: ahora es método de clase -----------------
-    def spawn_random_positions(self, count=None):
-        """Genera posiciones aleatorias para player, goal y enemigos."""
-        self.grid.clear_enemies()
-        self.enemies = []
-
-        # --- Player ---
-        player_cell = self.grid.get_random_empty_cell()
-        self.grid.set_cell(*player_cell, 0)  # opcional, marcar la celda como ocupada
-
-        # --- Goal ---
-        goal_cell = self.grid.get_random_empty_cell()
-        while goal_cell == player_cell:
-            goal_cell = self.grid.get_random_empty_cell()
-        self.grid.set_cell(*goal_cell, 0)  # opcional
-
-        goal_cell = self.grid.get_random_empty_cell()
-        self.goal.rect.topleft = (
-            self.GAME_AREA.x + goal_cell[1] * self.grid.cell_size + 5,
-            self.GAME_AREA.y + goal_cell[0] * self.grid.cell_size + 5
-        )
-        self.goal_cell = goal_cell  # <-- guardamos la celda real de la meta
-
-
-        # --- Cantidad de enemigos ---
-        if count is None:
-            if self.grid.rows <= 2 or self.grid.cols <= 2:
-                count = 1
-            else:
-                count = min(self.grid.rows, self.grid.cols)
-
-        # --- Enemies ---
-        for _ in range(count):
-            pos = self.grid.get_random_empty_cell()
-            while pos in (player_cell, goal_cell):
-                pos = self.grid.get_random_empty_cell()
-                if not pos:
-                    break
-            if not pos:
-                break
-
-            r, c = pos
-            self.grid.set_cell(r, c, 2)  # marcar como ocupado por enemigo
-
-            enemy_x = self.GAME_AREA.x + c * self.grid.cell_size + 10
-            enemy_y = self.GAME_AREA.y + r * self.grid.cell_size
-
-            image_path = random.choice([
-                "assets/images & sprites/B_Flintstone_Flyer.png",
-                "assets/images & sprites/B_Pilgrim_Groveller.png",
-                "assets/images & sprites/B_Pilgrim_Pouncer.png",
-                "assets/images & sprites/B_Skarr_Scout.png",
-                "assets/images & sprites/B_Smelt_Shoveller.png",
-                "assets/images & sprites/B_Winged_Pilgrim.png",
-                "assets/images & sprites/Mossgrub.png",
-                "assets/images & sprites/Mossmir.png",
-                "assets/images & sprites/Skarrlid.png",
-                "assets/images & sprites/Skarrwing.png",
-                "assets/images & sprites/B_Caranid.png",
-                "assets/images & sprites/B_Beastfly.png",
-                "assets/images & sprites/B_Skull_Scuttler.png",
-                "assets/images & sprites/B_Pilgrim_Hiker.png",
-            ])
-            e = self.enemy_class(enemy_x, enemy_y, image_path,
-                                (self.GAME_AREA.width, self.GAME_AREA.height))
-            e.resize_to_cell(self.grid.cell_size)
-            self.enemies.append(e)
-
-        # --- Ajustar player y goal ---
-        player_x = self.GAME_AREA.x + player_cell[1] * self.grid.cell_size + 5
-        player_y = self.GAME_AREA.y + player_cell[0] * self.grid.cell_size + 5
-        self.player.rect.topleft = (player_x, player_y)
-        self.player.resize_to_cell(self.grid.cell_size)
-
-        goal_x = self.GAME_AREA.x + goal_cell[1] * self.grid.cell_size + 5
-        goal_y = self.GAME_AREA.y + goal_cell[0] * self.grid.cell_size + 5
-        self.goal.rect.topleft = (goal_x, goal_y)
-        self.goal.resize_to_cell(self.grid.cell_size)
-
-        # --- Reset flags ---
-        self.goal_highlight = None
-        self.goal_reached = False
-    
-    def reset_positions(self):
-        """Coloca player y goal en los extremos del grid."""
-        # esquina superior izquierda (fila 0, col 0)
-        player_x = self.GAME_AREA.x + 0 * self.grid.cell_size + 5
-        player_y = self.GAME_AREA.y + 0 * self.grid.cell_size + 5
-
-        # esquina inferior derecha (última celda)
-        goal_x = self.GAME_AREA.x + (self.grid.cols - 1) * self.grid.cell_size + 5
-        goal_y = self.GAME_AREA.y + (self.grid.rows - 1) * self.grid.cell_size  + 5
-
-        # mover entidades
-        self.player.rect.topleft = (player_x, player_y)
-        self.goal.rect.topleft = (goal_x, goal_y)
-    
+    #  METODOS GENERALES
     def handle_goal_reached(self):
         if not self.goal_reached:
             self.goal_reached = True
@@ -223,6 +127,16 @@ class Game:
             # --- esperar un instante y reanudar música ---
             pygame.time.set_timer(pygame.USEREVENT + 1, 1000)  # 1000 ms = 1 seg
     
+    def get_min_distance(rows, cols):
+        # mínimo entre filas y columnas para determinar escala
+        size = min(rows, cols)
+        if size <= 3:
+            return 1  # 3x3 → al menos 1 celda de separación
+        elif size == 4:
+            return 2  # 4x4 → 2 celdas de separación
+        else:
+            return size // 2  # matrices grandes → al menos la mitad de la dimensión
+        
     def redefine_grid(self):
         """Redefine el tamaño de la grid según el valor ingresado."""
         if not self.user_text:
@@ -253,15 +167,131 @@ class Game:
         except ValueError:
             pass
 
-    def toggle_mute(self):
-        if self.muted:
-            pygame.mixer.music.set_volume(0.5)  # reactivar volumen
-            self.muted = False
-        else:
-            pygame.mixer.music.set_volume(0)    # silenciar
-            self.muted = True
+    def spawn_random_positions(self, count=None):
+        """Genera posiciones aleatorias para player, goal y enemigos,
+        asegurando distancia mínima entre player y goal y caminos con obstáculos."""
+        
+        self.grid.clear_enemies()
+        self.enemies = []
+
+        # --- Player ---
+        player_cell = self.grid.get_random_empty_cell()
+        self.grid.set_cell(*player_cell, 0)  # opcional, marcar como ocupado
+
+        # --- Meta (Goal) con distancia mínima ---
+        # Definir distancia mínima basada en tamaño del grid
+        min_distance = max(1, self.grid.rows // 2)  # por ejemplo: 3x3 -> 1, 4x4 -> 2, etc.
+
+        # Recoger todas las celdas válidas que cumplan distancia mínima
+        valid_goal_cells = []
+        for r in range(self.grid.rows):
+            for c in range(self.grid.cols):
+                dist = abs(r - player_cell[0]) + abs(c - player_cell[1])  # Manhattan
+                if dist >= min_distance:
+                    valid_goal_cells.append((r, c))
+
+        # Elegir aleatoriamente entre las válidas
+        goal_cell = random.choice(valid_goal_cells)
+        self.grid.set_cell(*goal_cell, 0)
+        self.goal_cell = goal_cell
+
+        # --- Cantidad de enemigos ---
+        if count is None:
+            if self.grid.rows <= 2 or self.grid.cols <= 2:
+                count = 1
+            else:
+                count = min(self.grid.rows, self.grid.cols)
+
+        # --- Enemies ---
+        # Para que “estorben” el camino, generaremos enemigos primero cerca del camino directo
+        player_r, player_c = player_cell
+        goal_r, goal_c = goal_cell
+
+        direct_path = []  # lista de celdas aproximadas entre player y goal
+        r_step = 1 if goal_r > player_r else -1
+        c_step = 1 if goal_c > player_c else -1
+
+        # recorrer filas y columnas intermedias
+        for r in range(player_r, goal_r + r_step, r_step):
+            for c in range(player_c, goal_c + c_step, c_step):
+                direct_path.append((r, c))
+
+        # Crear enemigos
+        enemy_positions = set()
+        for _ in range(count):
+            pos = self.grid.get_random_empty_cell()
+            # 50% de probabilidad de estar cerca del camino directo
+            if direct_path and random.random() < 0.5:
+                pos = random.choice(direct_path)
+
+            # evitar player y goal
+            while pos in (player_cell, goal_cell) or pos in enemy_positions:
+                pos = self.grid.get_random_empty_cell()
+                if not pos:
+                    break
+            if not pos:
+                break
+
+            r, c = pos
+            self.grid.set_cell(r, c, 2)
+            enemy_positions.add((r, c))
+
+            enemy_x = self.GAME_AREA.x + c * self.grid.cell_size + 5
+            enemy_y = self.GAME_AREA.y + r * self.grid.cell_size + 5
+
+            image_path = random.choice([
+                "assets/images & sprites/B_Flintstone_Flyer.png",
+                "assets/images & sprites/B_Pilgrim_Groveller.png",
+                "assets/images & sprites/B_Pilgrim_Pouncer.png",
+                "assets/images & sprites/B_Skarr_Scout.png",
+                "assets/images & sprites/B_Smelt_Shoveller.png",
+                "assets/images & sprites/B_Winged_Pilgrim.png",
+                "assets/images & sprites/Mossgrub.png",
+                "assets/images & sprites/Mossmir.png",
+                "assets/images & sprites/Skarrlid.png",
+                "assets/images & sprites/Skarrwing.png",
+                "assets/images & sprites/B_Caranid.png",
+                "assets/images & sprites/B_Beastfly.png",
+                "assets/images & sprites/B_Skull_Scuttler.png",
+                "assets/images & sprites/B_Pilgrim_Hiker.png",
+            ])
+            e = self.enemy_class(enemy_x, enemy_y, image_path,
+                                (self.GAME_AREA.width, self.GAME_AREA.height))
+            e.resize_to_cell(self.grid.cell_size)
+            self.enemies.append(e)
+
+        # --- Ajustar player ---
+        player_x = self.GAME_AREA.x + player_cell[1] * self.grid.cell_size + 5
+        player_y = self.GAME_AREA.y + player_cell[0] * self.grid.cell_size + 5
+        self.player.rect.topleft = (player_x, player_y)
+        self.player.resize_to_cell(self.grid.cell_size)
+
+        # --- Ajustar goal ---
+        goal_x = self.GAME_AREA.x + goal_cell[1] * self.grid.cell_size + 5
+        goal_y = self.GAME_AREA.y + goal_cell[0] * self.grid.cell_size + 5
+        self.goal.rect.topleft = (goal_x, goal_y)
+        self.goal.resize_to_cell(self.grid.cell_size)
+
+        # --- Reset flags ---
+        self.goal_highlight = None
+        self.goal_reached = False
 
 
+    
+    def reset_positions(self):
+        """Coloca player y goal en los extremos del grid."""
+        # esquina superior izquierda (fila 0, col 0)
+        player_x = self.GAME_AREA.x + 0 * self.grid.cell_size + 5
+        player_y = self.GAME_AREA.y + 0 * self.grid.cell_size + 5
+
+        # esquina inferior derecha (última celda)
+        goal_x = self.GAME_AREA.x + (self.grid.cols - 1) * self.grid.cell_size + 5
+        goal_y = self.GAME_AREA.y + (self.grid.rows - 1) * self.grid.cell_size  + 5
+
+        # mover entidades
+        self.player.rect.topleft = (player_x, player_y)
+        self.goal.rect.topleft = (goal_x, goal_y)
+    
     # =============== EVENTOS =================
     def handle_events(self):
         for event in pygame.event.get():
@@ -311,6 +341,14 @@ class Game:
         elif self.btn_cerrar.collidepoint(pos):
             pygame.quit()
             sys.exit()
+    
+    def toggle_mute(self):
+        if self.muted:
+            pygame.mixer.music.set_volume(0.5)  # reactivar volumen
+            self.muted = False
+        else:
+            pygame.mixer.music.set_volume(0)    # silenciar
+            self.muted = True
 
     # =============== ACTUALIZACIÓN =================
     def update(self):
