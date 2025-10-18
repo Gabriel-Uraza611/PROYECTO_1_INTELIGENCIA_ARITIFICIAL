@@ -148,7 +148,7 @@ class Game:
                 root = tk.Tk()
                 root.withdraw()  # oculta ventana principal
                 messagebox.showwarning("Tamaño inválido",
-                                    "No puedes generar matrices menores a 2x2 ni mayores a 12x15")
+                                    "No puedes generar matrices menores a 2x2 ni mayores a 16x16")
                 root.destroy()
                 return
 
