@@ -28,9 +28,10 @@ class Player(pygame.sprite.Sprite):
         if keys[pygame.K_DOWN]:
             self.rect.y += self.velocidad
 
-        # Limitar movimiento a los bordes de la pantalla
-        self.rect.x = max(0, min(self.rect.x, self.bounds[0] - self.rect.width))
-        self.rect.y = max(0, min(self.rect.y, self.bounds[1] - self.rect.height))
+        # Limitar movimiento a los bordes del GAME_AREA
+        self.rect.x = max(self.bounds[0], min(self.rect.x, self.bounds[0] + self.bounds[2] - self.rect.width))
+        self.rect.y = max(self.bounds[1], min(self.rect.y, self.bounds[1] + self.bounds[3] - self.rect.height))
+
 
     def draw(self, surface):
         surface.blit(self.image, self.rect)
