@@ -326,33 +326,76 @@ class Game:
 
     # =============== DIBUJO =================
     def draw(self):
+        #COLORES
+        WHITE = (255, 255, 255)
+        BLACK = (0, 0, 0)
+        COLOR_PLAYER = (244, 213, 0)   # amarillo
+        COLOR_ENEMY = (255, 0, 0)      # rojo
+        COLOR_GOAL = (0, 0, 255)       # azul
+        COLOR_GOAL_REACHED = (0, 255, 0)  # verde
+
         # fondo global
         self.ROOT.blit(self.background, (0, 0))
 
-        # área de juego (blanco) y su borde
-        pygame.draw.rect(self.ROOT, (255, 255, 255), self.GAME_AREA)
-        pygame.draw.rect(self.ROOT, (0, 0, 0), self.GAME_AREA, 6)
-
-
-        # dibujar la grid (usa offsets como ya lo haces)
+        # área de juego 
+        pygame.draw.rect(self.ROOT, WHITE, self.GAME_AREA)
+        
+        #grid
         self.grid.draw(self.ROOT, self.GAME_AREA.x, self.GAME_AREA.y)
-        # Si la meta fue alcanzada, pinta la celda de verde
-        if self.goal_highlight:
-            r, c = self.goal_highlight
-            rect = pygame.Rect(
-                self.GAME_AREA.x + c * self.grid.cell_size,
-                self.GAME_AREA.y + r * self.grid.cell_size,
-                self.grid.cell_size,
-                self.grid.cell_size
-            )
-            pygame.draw.rect(self.ROOT, (0, 255, 0), rect)  # verde fuerte
-            pygame.draw.rect(self.ROOT, (0, 0, 0), rect, 2)  # borde negro opcional
+
+        padding = 2  # margen dentro de la celda
+
+        # --- Player ---
+        player_row = (self.player.rect.y - self.GAME_AREA.y) // self.grid.cell_size
+        player_col = (self.player.rect.x - self.GAME_AREA.x) // self.grid.cell_size
+        pygame.draw.rect(self.ROOT, COLOR_PLAYER,
+                        pygame.Rect(self.GAME_AREA.x + player_col * self.grid.cell_size + padding,
+                                    self.GAME_AREA.y + player_row * self.grid.cell_size + padding,
+                                    self.grid.cell_size - 2*padding,
+                                    self.grid.cell_size - 2*padding))
+        pygame.draw.rect(self.ROOT, BLACK,
+                        pygame.Rect(self.GAME_AREA.x + player_col * self.grid.cell_size,
+                                    self.GAME_AREA.y + player_row * self.grid.cell_size,
+                                    self.grid.cell_size,
+                                    self.grid.cell_size), 2)
+
+        # --- Colorear casilla de la meta ---
+        goal_row, goal_col = self.goal_cell
+        goal_color = COLOR_GOAL_REACHED if self.goal_reached else COLOR_GOAL
+        pygame.draw.rect(self.ROOT, goal_color,
+                        pygame.Rect(self.GAME_AREA.x + goal_col * self.grid.cell_size + padding,
+                                    self.GAME_AREA.y + goal_row * self.grid.cell_size + padding,
+                                    self.grid.cell_size - 2*padding,
+                                    self.grid.cell_size - 2*padding))
+        # borde negro de la meta
+        pygame.draw.rect(self.ROOT, BLACK,
+                        pygame.Rect(self.GAME_AREA.x + goal_col * self.grid.cell_size,
+                                    self.GAME_AREA.y + goal_row * self.grid.cell_size,
+                                    self.grid.cell_size, self.grid.cell_size), 2)
+
+        # --- Enemigos ---
+        for enemy in self.enemies:
+            enemy_row = (enemy.rect.y - self.GAME_AREA.y) // self.grid.cell_size
+            enemy_col = (enemy.rect.x - self.GAME_AREA.x) // self.grid.cell_size
+            pygame.draw.rect(self.ROOT, COLOR_ENEMY,
+                            pygame.Rect(self.GAME_AREA.x + enemy_col * self.grid.cell_size + padding,
+                                        self.GAME_AREA.y + enemy_row * self.grid.cell_size + padding,
+                                        self.grid.cell_size - 2*padding,
+                                        self.grid.cell_size - 2*padding))
+            pygame.draw.rect(self.ROOT, BLACK,
+                            pygame.Rect(self.GAME_AREA.x + enemy_col * self.grid.cell_size,
+                                        self.GAME_AREA.y + enemy_row * self.grid.cell_size,
+                                        self.grid.cell_size,
+                                        self.grid.cell_size), 2)
+        
+        #borde game area
+        pygame.draw.rect(self.ROOT, BLACK, self.GAME_AREA, 6)
 
         # Dibujar enemigos
         for enemy in self.enemies:
             enemy.draw(self.ROOT)
 
-        # Dibujar objetivo y jugador (fuera del bucle de enemigos)
+        # Dibujar objetivo y jugador 
         self.goal.draw(self.ROOT)
         self.ROOT.blit(self.player.image, (self.player.rect.x, self.player.rect.y))
 
@@ -388,13 +431,11 @@ class Game:
         color = (200, 0, 0) if self.muted else (0, 200, 0)
         pygame.draw.rect(self.ROOT, color, self.btn_mute, border_radius=5)
 
-        # opcional: poner texto o icono
         font_small = pygame.font.SysFont("Verdana", 12, bold=True)
         text = "Mute" if not self.muted else "UnMute"
         text_surf = font_small.render(text, True, (255, 255, 255))
         text_rect = text_surf.get_rect(center=self.btn_mute.center)
         self.ROOT.blit(text_surf, text_rect)
-
 
         pygame.display.update()
 
