@@ -10,6 +10,13 @@ class Player(pygame.sprite.Sprite):
         self.velocidad = 5
         self.bounds = bounds  # (ancho, alto) de la ventana
 
+    def resize_to_cell(self, cell_size, padding=10):
+        """Ajusta el sprite al tamaño de la celda."""
+        size = cell_size - padding
+        self.image = pygame.transform.scale(self.image, (size, size))
+        self.rect = self.image.get_rect(topleft=self.rect.topleft)
+
+
     def update(self):
         keys = pygame.key.get_pressed()
         if keys[pygame.K_LEFT]:

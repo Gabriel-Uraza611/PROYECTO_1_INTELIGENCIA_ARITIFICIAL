@@ -8,8 +8,12 @@ class Goal(pygame.sprite.Sprite):
         self.rect = self.image.get_rect(topleft=(x, y))
         self.bounds = bounds
 
-    def update(self):
-        pass  # La meta normalmente no se mueve
+    def resize_to_cell(self, cell_size, padding=10):
+        """Ajusta el sprite al tamaño de la celda."""
+        size = cell_size - padding
+        self.image = pygame.transform.scale(self.image, (size, size))
+        self.rect = self.image.get_rect(topleft=self.rect.topleft)
+
 
     def draw(self, surface):
         surface.blit(self.image, self.rect)

@@ -10,6 +10,8 @@ Responsabilidades:
 # src/game.py
 import pygame, sys
 import random
+import tkinter as tk
+from tkinter import messagebox
 from player import Player
 from enemy import Enemy
 from goal import Goal
@@ -18,8 +20,8 @@ from grid import Grid
 class Game:
     def __init__(self):
         pygame.init()
-        pygame.display.set_caption("Simulador Beam Search")
-        pygame.display.set_icon(pygame.image.load("assets/images & sprites/cute_hornet.png"))
+        pygame.display.set_caption("BeamSearch & DynamicWeighting")
+        pygame.display.set_icon(pygame.image.load("assets/images & sprites/logo.png"))
 
         # --- Dimensiones generales ---
         self.WIDTH, self.HEIGHT = 800, 500
@@ -30,7 +32,7 @@ class Game:
         self.GAME_AREA = pygame.Rect(0, 0, 500, 500)
 
         # --- Crear grid lógico (5x5 con celdas de 100 px) ---
-        self.grid = Grid(5, 5, 100)
+        self.grid = Grid(7, 7, self.GAME_AREA.width, self.GAME_AREA.height)
 
         # --- Guardar referencia a la clase Enemy para crear instancias ---
         self.enemy_class = Enemy
@@ -40,58 +42,148 @@ class Game:
         # He puesto posiciones fijas (ajusta si quieres que Player use celdas del grid)
         self.player = Player(10, 3, "assets/images & sprites/cute_hornet.png",
                              (self.GAME_AREA.width, self.GAME_AREA.height))
-        self.goal = Goal(400, 395, "assets/images & sprites/Npc_sherma.jpg",
+        self.goal = Goal(400, 395, "assets/images & sprites/Seek_Quest_Icon.png",
                          (self.GAME_AREA.width, self.GAME_AREA.height))
 
         # --- Enemies list vacía inicialmente; serán generados aleatoriamente ---
         self.enemies = []
 
         # --- Panel lateral ---
-        self.panel_rect = pygame.Rect(self.GAME_AREA.width + 20, 60, 250, 370)
+        self.panel_rect = pygame.Rect(self.GAME_AREA.width + 20, 40, 250, 300)
 
         # --- Generar enemigos aleatorios (solo al iniciar) ---
         self.spawn_random_enemies()
 
+        #--- Resetear las posiciones de meta y player----
+
+
         # Botones (se definen aquí para que existan antes de handle_click)
         self._create_buttons()
+        self.input_active = False
+        self.user_text = ""
+        self.input_box = pygame.Rect(self.panel_rect.x + 20, self.panel_rect.y + 142, 200, 30)
+        self.input_color_inactive = pygame.Color('lightskyblue3')
+        self.input_color_active = pygame.Color('dodgerblue2')
+        self.input_color = self.input_color_inactive
 
     # ----------------- método para crear botones -----------------
     def _create_buttons(self):
-        self.btn_beam = pygame.Rect(self.panel_rect.x + 20, self.panel_rect.y + 60, 200, 50)
-        self.btn_dynamic = pygame.Rect(self.panel_rect.x + 20, self.panel_rect.y + 120, 200, 50)
-        self.btn_reiniciar = pygame.Rect(self.panel_rect.x + 20, self.panel_rect.y + 230, 200, 50)
-        self.btn_cerrar = pygame.Rect(self.panel_rect.x + 20, self.panel_rect.y + 290, 200, 50)
+        self.btn_beam = pygame.Rect(self.panel_rect.x + 10, self.panel_rect.y + 60, 110, 40)
+        self.btn_dynamic = pygame.Rect(self.panel_rect.x + 128, self.panel_rect.y + 60, 110, 40)
+        self.btn_redefinir = pygame.Rect(self.panel_rect.x + 120, self.panel_rect.y + 188, 90, 40)
+        self.btn_reiniciar = pygame.Rect(self.panel_rect.x + 30, self.panel_rect.y +  188, 80, 40)
+        self.btn_cerrar = pygame.Rect(self.panel_rect.x + 70, self.panel_rect.y + 235, 90, 40)
 
     # ----------------- método que antes estaba anidado: ahora es método de clase -----------------
-    def spawn_random_enemies(self, count=5):
-        """Genera posiciones aleatorias para los enemigos.
-        Coloca marcas en grid.matrix (valor 2) y crea instancias Enemy.
-        """
+    def spawn_random_enemies(self, count=None):
+        """Genera enemigos según el tamaño del grid."""
         self.grid.clear_enemies()
         self.enemies = []
 
+        # --- calcular cantidad de enemigos según tamaño ---
+        if count is None:
+            # regla: si el grid es menor o igual a 2x2 → 1 enemigo
+            if self.grid.rows <= 2 or self.grid.cols <= 2:
+                count = 1
+            else:
+                # usa el menor de los dos tamaños (más equilibrado)
+                count = min(self.grid.rows, self.grid.cols)
+
+        # coordenadas reservadas (player y goal)
+        player_cell = (0, 0)
+        goal_cell = (self.grid.rows - 1, self.grid.cols - 1)
+
+        # --- generar enemigos ---
         for _ in range(count):
-            pos = self.grid.get_random_empty_cell()  # (fila, col)
+            pos = self.grid.get_random_empty_cell()
+            while pos in (player_cell, goal_cell):
+                pos = self.grid.get_random_empty_cell()
+                if not pos:
+                    break
             if not pos:
                 break
+
             r, c = pos
-            # marcar en la matriz lógica
             self.grid.set_cell(r, c, 2)
 
-            # convertir a píxeles (centrar dentro de la celda con un padding)
             enemy_x = self.GAME_AREA.x + c * self.grid.cell_size + 10
             enemy_y = self.GAME_AREA.y + r * self.grid.cell_size
 
-            # crear instancia de Enemy
             image_path = random.choice([
-                "assets/images & sprites/cucarron.png",
-                "assets/images & sprites/ganzo.png",
-                "assets/images & sprites/campana.png",
-                "assets/images & sprites/cucarron_lanza.png",
+                "assets/images & sprites/B_Flintstone_Flyer.png",
+                "assets/images & sprites/B_Pilgrim_Groveller.png",
+                "assets/images & sprites/B_Pilgrim_Pouncer.png",
+                "assets/images & sprites/B_Skarr_Scout.png",
+                "assets/images & sprites/B_Smelt_Shoveller.png",
+                "assets/images & sprites/B_Winged_Pilgrim.png",
+                "assets/images & sprites/Mossgrub.png",
+                "assets/images & sprites/Mossmir.png",
+                "assets/images & sprites/Skarrlid.png",
+                "assets/images & sprites/Skarrwing.png",
+                "assets/images & sprites/B_Caranid.png",
+                "assets/images & sprites/B_Beastfly.png",
+                "assets/images & sprites/B_Skull_Scuttler.png",
+                "assets/images & sprites/B_Pilgrim_Hiker.png",
             ])
+
             e = self.enemy_class(enemy_x, enemy_y, image_path,
-                                 (self.GAME_AREA.width, self.GAME_AREA.height))
+                                (self.GAME_AREA.width, self.GAME_AREA.height))
+            e.resize_to_cell(self.grid.cell_size)  # <-- adapta sprite
             self.enemies.append(e)
+
+            # redefinir los tamaños
+            self.player.resize_to_cell(self.grid.cell_size)
+            self.goal.resize_to_cell(self.grid.cell_size)
+
+            for e in self.enemies:
+                e.resize_to_cell(self.grid.cell_size)
+
+            self.reset_positions()
+
+    
+    def reset_positions(self):
+        """Coloca player y goal en los extremos del grid."""
+        # esquina superior izquierda (fila 0, col 0)
+        player_x = self.GAME_AREA.x + 0 * self.grid.cell_size + 5
+        player_y = self.GAME_AREA.y + 0 * self.grid.cell_size + 5
+
+        # esquina inferior derecha (última celda)
+        goal_x = self.GAME_AREA.x + (self.grid.cols - 1) * self.grid.cell_size + 5
+        goal_y = self.GAME_AREA.y + (self.grid.rows - 1) * self.grid.cell_size  + 5
+
+        # mover entidades
+        self.player.rect.topleft = (player_x, player_y)
+        self.goal.rect.topleft = (goal_x, goal_y)
+    
+    def redefinir_grid(self):
+        """Redefine el tamaño de la grid según el valor ingresado."""
+        if not self.user_text:
+            return
+        try:
+            size = int(self.user_text)
+            # --- validar rango permitido ---
+            if size < 2 or size > 12:
+                # crear ventana tkinter temporal para mostrar warning
+                root = tk.Tk()
+                root.withdraw()  # oculta ventana principal
+                messagebox.showwarning("Tamaño inválido",
+                                    "No puedes generar matrices menores a 2x2 ni mayores a 12x12")
+                root.destroy()
+                return
+
+            # recrear la grid
+            self.grid = Grid(size, size, self.GAME_AREA.width, self.GAME_AREA.height)
+            # regenerar enemigos y reposicionar
+            self.spawn_random_enemies()
+            print(f"Grid redefinida a {size}x{size}")
+
+            # --- limpiar y desactivar input ---
+            self.user_text = ""
+            self.input_active = False
+            self.input_color = self.input_color_inactive
+
+        except ValueError:
+            pass
 
     # =============== EVENTOS =================
     def handle_events(self):
@@ -100,7 +192,24 @@ class Game:
                 pygame.quit()
                 sys.exit()
             if event.type == pygame.MOUSEBUTTONDOWN:
+                # activar o desactivar input box
+                if self.input_box.collidepoint(event.pos):
+                    self.input_active = not self.input_active
+                else:
+                    self.input_active = False
+                self.input_color = self.input_color_active if self.input_active else self.input_color_inactive
+
+                # manejo de botones
                 self.handle_click(event.pos)
+
+            if event.type == pygame.KEYDOWN and self.input_active:
+                if event.key == pygame.K_RETURN:
+                    self.redefinir_grid()
+                elif event.key == pygame.K_BACKSPACE:
+                    self.user_text = self.user_text[:-1]
+                elif event.unicode.isdigit() and len(self.user_text) < 2:  # máximo 2 dígitos
+                    self.user_text += event.unicode
+
 
     def handle_click(self, pos):
         # comprobamos botones - reiniciar llamará a spawn_random_enemies
@@ -111,6 +220,9 @@ class Game:
         elif self.btn_reiniciar.collidepoint(pos):
             print("Reiniciar - reubicando enemigos")
             self.spawn_random_enemies()   # <-- solo cuando el usuario lo pide
+        elif self.btn_redefinir.collidepoint(pos):
+            print("Redefinir - cambiando tamaño de grid")
+            self.redefinir_grid()
         elif self.btn_cerrar.collidepoint(pos):
             pygame.quit()
             sys.exit()
@@ -131,7 +243,8 @@ class Game:
         pygame.draw.rect(self.ROOT, (255, 255, 255), self.GAME_AREA)
         pygame.draw.rect(self.ROOT, (0, 0, 0), self.GAME_AREA, 6)
 
-        # (Opcional) dibujar la cuadrícula lógica si quieres verla:
+
+        # dibujar la grid (usa offsets como ya lo haces)
         self.grid.draw(self.ROOT, self.GAME_AREA.x, self.GAME_AREA.y)
 
         # Dibujar enemigos
@@ -147,20 +260,27 @@ class Game:
         font = pygame.font.SysFont("Verdana", 18, bold=True)
         self.ROOT.blit(font.render("Opciones de búsqueda", True, (0, 0, 0)),
                        (self.panel_rect.x + 12, self.panel_rect.y + 20))
-        self.ROOT.blit(font.render("Acciones", True, (0, 0, 0)),
-                       (self.panel_rect.x + 24, self.panel_rect.y + 190))
+        
 
         # dibujar botones
-        font_btn = pygame.font.SysFont("Verdana", 22, bold=True)
-        buttons = [self.btn_beam, self.btn_dynamic, self.btn_reiniciar, self.btn_cerrar]
-        colors = [(74, 222, 252), (74, 222, 252), (32, 223, 83), (255, 0, 0)]
-        texts = ["Beam Search", "Dynamic W.", "Reiniciar", "Cerrar"]
+        font_btn = pygame.font.SysFont("Verdana", 14, bold=True)
+        buttons = [self.btn_beam, self.btn_dynamic, self.btn_reiniciar, self.btn_cerrar, self.btn_redefinir]
+        colors = [(74, 222, 252), (74, 222, 252), (74, 222, 252), (255, 0, 0), (74, 222, 252)]
+        texts = ["Beam Search", "Dynamic W.", "Reiniciar", "Cerrar", "Redefinir"]
 
         for b, c, t in zip(buttons, colors, texts):
             pygame.draw.rect(self.ROOT, c, b, border_radius=15)
-            text_surf = font_btn.render(t, True, (255, 255, 255))
+            text_surf = font_btn.render(t, True, (0, 0, 0))
             text_rect = text_surf.get_rect(center=b.center)
             self.ROOT.blit(text_surf, text_rect)
+        
+                # --- campo de entrada ---
+        pygame.draw.rect(self.ROOT, self.input_color, self.input_box, 2)
+        font_input = pygame.font.SysFont("Verdana", 18, bold=True)
+        txt_surface = font_input.render(self.user_text, True, (0, 0, 0))
+        self.ROOT.blit(txt_surface, (self.input_box.x + 5, self.input_box.y + 3))
+        self.ROOT.blit(font_input.render("Tamaño:", True, (0, 0, 0)), (self.input_box.x, self.input_box.y - 25))
+
 
         pygame.display.update()
 

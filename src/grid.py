@@ -13,12 +13,13 @@ import pygame
 import random
 
 class Grid:
-    def __init__(self, rows, cols, cell_size):
+    def __init__(self, rows, cols, area_width, area_height):
         self.rows = rows
         self.cols = cols
-        self.cell_size = cell_size
-        self.matrix = [[0 for _ in range(cols)] for _ in range(rows)]  # 0 = vacío
-
+        # calcular cell_size automáticamente
+        self.cell_size = min(area_width // cols, area_height // rows)
+        self.matrix = [[0 for _ in range(cols)] for _ in range(rows)]
+        
     def set_cell(self, r, c, value):
         self.matrix[r][c] = value
 
