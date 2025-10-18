@@ -13,8 +13,7 @@ import random
 import tkinter as tk
 from tkinter import messagebox
 from player import Player
-from enemy import Enemy
-from goal import Goal
+from entity import Entity
 from grid import Grid
 
 class Game:
@@ -66,7 +65,7 @@ class Game:
         self.grid = Grid(7, 7, self.GAME_AREA.width, self.GAME_AREA.height)
 
         # --- Guardar referencia a la clase Enemy para crear instancias ---
-        self.enemy_class = Enemy
+        self.enemy_class = Entity
 
         # --- Crear entidades fijas (player y goal) ---
         # Nota: aquí pasas coordenadas en píxeles a Player/Goal según su constructor actual
@@ -74,7 +73,7 @@ class Game:
         self.player = Player(10, 3, "assets/images & sprites/cute_hornet.png",
                      (self.GAME_AREA.x, self.GAME_AREA.y, self.GAME_AREA.width, self.GAME_AREA.height))
 
-        self.goal = Goal(400, 395, "assets/images & sprites/Seek_Quest_Icon.png",
+        self.goal = Entity(400, 395, "assets/images & sprites/Seek_Quest_Icon.png",
                          (self.GAME_AREA.width, self.GAME_AREA.height))
 
         # --- Enemies list vacía inicialmente; serán generados aleatoriamente ---
