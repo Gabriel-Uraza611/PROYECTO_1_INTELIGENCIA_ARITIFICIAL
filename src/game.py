@@ -38,6 +38,19 @@ class Game:
         self.goal_reached = False
         self.goal_highlight = None
 
+        #sonidos efectos
+        self.button_sfx_files = [
+            "assets/audio/ADIDOO.wav",
+            "assets/audio/CARAMA.wav",
+            "assets/audio/HEGALE.wav",
+            "assets/audio/SHAW.wav",
+            "assets/audio/GIT_GUD.wav"
+        ]
+        # Convertirlos en objetos Sound
+        self.button_sfx = [pygame.mixer.Sound(path) for path in self.button_sfx_files]
+        for s in self.button_sfx:
+            s.set_volume(0.3)
+
 
         # --- Dimensiones generales ---
         self.WIDTH, self.HEIGHT = 1024, 576
@@ -269,8 +282,10 @@ class Game:
     def handle_click(self, pos):
         # comprobamos botones - reiniciar llamará a spawn_random_enemies -------------> OJO BORRAR PRINTS CUANDO SE TERMINE EL PROYECTO
         if self.btn_beam.collidepoint(pos):
+            random.choice(self.button_sfx).play()
             print("Beam Search seleccionado")
         elif self.btn_dynamic.collidepoint(pos):
+            random.choice(self.button_sfx).play()
             print("Dynamic Weighting seleccionado")
         elif self.btn_reiniciar.collidepoint(pos):
             print("Reiniciar - reubicando enemigos")
