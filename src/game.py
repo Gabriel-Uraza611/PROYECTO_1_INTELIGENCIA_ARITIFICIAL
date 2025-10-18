@@ -19,9 +19,16 @@ from grid import Grid
 
 class Game:
     def __init__(self):
+        #general
         pygame.init()
+        pygame.mixer.init()
         pygame.display.set_caption("BeamSearch & DynamicWeighting")
         pygame.display.set_icon(pygame.image.load("assets/images & sprites/logo.png"))
+
+        #MUSIQUITA
+        pygame.mixer.music.load("assets/audio/OST.mp3")
+        pygame.mixer.music.set_volume(0.5)
+        pygame.mixer.music.play(-1)
 
         # --- Dimensiones generales ---
         self.WIDTH, self.HEIGHT = 800, 500
@@ -65,6 +72,10 @@ class Game:
         self.input_color_inactive = pygame.Color('lightskyblue3')
         self.input_color_active = pygame.Color('dodgerblue2')
         self.input_color = self.input_color_inactive
+
+        # botón pequeño de mute en la esquina inferior derecha
+        self.btn_mute = pygame.Rect(self.WIDTH - 55, self.HEIGHT - 45, 50, 40)  # tamaño 40x40 px
+        self.muted = False  # estado de la música
 
     # ----------------- método para crear botones -----------------
     def _create_buttons(self):
@@ -185,6 +196,14 @@ class Game:
         except ValueError:
             pass
 
+    def toggle_mute(self):
+        if self.muted:
+            pygame.mixer.music.set_volume(0.5)  # reactivar volumen
+            self.muted = False
+        else:
+            pygame.mixer.music.set_volume(0)    # silenciar
+            self.muted = True
+
     # =============== EVENTOS =================
     def handle_events(self):
         for event in pygame.event.get():
@@ -223,6 +242,8 @@ class Game:
         elif self.btn_redefinir.collidepoint(pos):
             print("Redefinir - cambiando tamaño de grid")
             self.redefinir_grid()
+        elif self.btn_mute.collidepoint(pos):
+            self.toggle_mute()
         elif self.btn_cerrar.collidepoint(pos):
             pygame.quit()
             sys.exit()
@@ -280,6 +301,17 @@ class Game:
         txt_surface = font_input.render(self.user_text, True, (0, 0, 0))
         self.ROOT.blit(txt_surface, (self.input_box.x + 5, self.input_box.y + 3))
         self.ROOT.blit(font_input.render("Tamaño:", True, (0, 0, 0)), (self.input_box.x, self.input_box.y - 25))
+
+        # dibujar botón de mute
+        color = (200, 0, 0) if self.muted else (0, 200, 0)
+        pygame.draw.rect(self.ROOT, color, self.btn_mute, border_radius=5)
+
+        # opcional: poner texto o icono
+        font_small = pygame.font.SysFont("Verdana", 12, bold=True)
+        text = "Mute" if not self.muted else "UnMute"
+        text_surf = font_small.render(text, True, (255, 255, 255))
+        text_rect = text_surf.get_rect(center=self.btn_mute.center)
+        self.ROOT.blit(text_surf, text_rect)
 
 
         pygame.display.update()
