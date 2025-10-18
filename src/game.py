@@ -83,7 +83,7 @@ class Game:
         self.panel_rect = pygame.Rect(self.GAME_AREA.width + 190, 110, 250, 300)
 
         # --- Generar enemigos aleatorios (solo al iniciar) ---
-        self.spawn_random_enemies()
+        self.spawn_random_positions()
 
         #--- Resetear las posiciones de meta y player----
 
@@ -110,25 +110,37 @@ class Game:
         self.btn_cerrar = pygame.Rect(self.panel_rect.x + 70, self.panel_rect.y + 235, 90, 40)
 
     # ----------------- método que antes estaba anidado: ahora es método de clase -----------------
-    def spawn_random_enemies(self, count=None):
-        """Genera enemigos según el tamaño del grid."""
+    def spawn_random_positions(self, count=None):
+        """Genera posiciones aleatorias para player, goal y enemigos."""
         self.grid.clear_enemies()
         self.enemies = []
 
-        # --- calcular cantidad de enemigos según tamaño ---
+        # --- Player ---
+        player_cell = self.grid.get_random_empty_cell()
+        self.grid.set_cell(*player_cell, 0)  # opcional, marcar la celda como ocupada
+
+        # --- Goal ---
+        goal_cell = self.grid.get_random_empty_cell()
+        while goal_cell == player_cell:
+            goal_cell = self.grid.get_random_empty_cell()
+        self.grid.set_cell(*goal_cell, 0)  # opcional
+
+        goal_cell = self.grid.get_random_empty_cell()
+        self.goal.rect.topleft = (
+            self.GAME_AREA.x + goal_cell[1] * self.grid.cell_size + 5,
+            self.GAME_AREA.y + goal_cell[0] * self.grid.cell_size + 5
+        )
+        self.goal_cell = goal_cell  # <-- guardamos la celda real de la meta
+
+
+        # --- Cantidad de enemigos ---
         if count is None:
-            # regla: si el grid es menor o igual a 2x2 → 1 enemigo
             if self.grid.rows <= 2 or self.grid.cols <= 2:
                 count = 1
             else:
-                # usa el menor de los dos tamaños (más equilibrado)
                 count = min(self.grid.rows, self.grid.cols)
 
-        # coordenadas reservadas (player y goal)
-        player_cell = (0, 0)
-        goal_cell = (self.grid.rows - 1, self.grid.cols - 1)
-
-        # --- generar enemigos ---
+        # --- Enemies ---
         for _ in range(count):
             pos = self.grid.get_random_empty_cell()
             while pos in (player_cell, goal_cell):
@@ -139,7 +151,7 @@ class Game:
                 break
 
             r, c = pos
-            self.grid.set_cell(r, c, 2)
+            self.grid.set_cell(r, c, 2)  # marcar como ocupado por enemigo
 
             enemy_x = self.GAME_AREA.x + c * self.grid.cell_size + 10
             enemy_y = self.GAME_AREA.y + r * self.grid.cell_size
@@ -160,24 +172,25 @@ class Game:
                 "assets/images & sprites/B_Skull_Scuttler.png",
                 "assets/images & sprites/B_Pilgrim_Hiker.png",
             ])
-
             e = self.enemy_class(enemy_x, enemy_y, image_path,
                                 (self.GAME_AREA.width, self.GAME_AREA.height))
-            e.resize_to_cell(self.grid.cell_size)  # <-- adapta sprite
+            e.resize_to_cell(self.grid.cell_size)
             self.enemies.append(e)
 
-            # redefinir los tamaños
-            self.player.resize_to_cell(self.grid.cell_size)
-            self.goal.resize_to_cell(self.grid.cell_size)
+        # --- Ajustar player y goal ---
+        player_x = self.GAME_AREA.x + player_cell[1] * self.grid.cell_size + 5
+        player_y = self.GAME_AREA.y + player_cell[0] * self.grid.cell_size + 5
+        self.player.rect.topleft = (player_x, player_y)
+        self.player.resize_to_cell(self.grid.cell_size)
 
-            for e in self.enemies:
-                e.resize_to_cell(self.grid.cell_size)
+        goal_x = self.GAME_AREA.x + goal_cell[1] * self.grid.cell_size + 5
+        goal_y = self.GAME_AREA.y + goal_cell[0] * self.grid.cell_size + 5
+        self.goal.rect.topleft = (goal_x, goal_y)
+        self.goal.resize_to_cell(self.grid.cell_size)
 
-            self.reset_positions()
-            self.goal_highlight = None
-            self.goal_reached = False
-
-
+        # --- Reset flags ---
+        self.goal_highlight = None
+        self.goal_reached = False
     
     def reset_positions(self):
         """Coloca player y goal en los extremos del grid."""
@@ -193,7 +206,24 @@ class Game:
         self.player.rect.topleft = (player_x, player_y)
         self.goal.rect.topleft = (goal_x, goal_y)
     
-    def redefinir_grid(self):
+    def handle_goal_reached(self):
+        if not self.goal_reached:
+            self.goal_reached = True
+            print("Meta alcanzada") 
+
+            # --- pausar la música de fondo ---
+            pygame.mixer.music.pause()
+
+            # --- reproducir sonido corto de meta alcanzada ---
+            self.goal_sound.play()
+
+            # --- marcar celda verde ---
+            self.goal_highlight = self.goal_cell
+
+            # --- esperar un instante y reanudar música ---
+            pygame.time.set_timer(pygame.USEREVENT + 1, 1000)  # 1000 ms = 1 seg
+    
+    def redefine_grid(self):
         """Redefine el tamaño de la grid según el valor ingresado."""
         if not self.user_text:
             return
@@ -212,7 +242,7 @@ class Game:
             # recrear la grid
             self.grid = Grid(size, size, self.GAME_AREA.width, self.GAME_AREA.height)
             # regenerar enemigos y reposicionar
-            self.spawn_random_enemies()
+            self.spawn_random_positions()
             print(f"Grid redefinida a {size}x{size}")
 
             # --- limpiar y desactivar input ---
@@ -230,23 +260,7 @@ class Game:
         else:
             pygame.mixer.music.set_volume(0)    # silenciar
             self.muted = True
-    
-    def handle_goal_reached(self):
-        if not self.goal_reached:
-            self.goal_reached = True
-            print("Meta alcanzada") 
 
-            # --- pausar la música de fondo ---
-            pygame.mixer.music.pause()
-
-            # --- reproducir sonido corto de meta alcanzada ---
-            self.goal_sound.play()
-
-            # --- marcar celda verde ---
-            self.goal_highlight = (self.grid.rows - 1, self.grid.cols - 1)
-
-            # --- esperar un instante y reanudar música ---
-            pygame.time.set_timer(pygame.USEREVENT + 1, 1000)  # 1000 ms = 1 seg
 
     # =============== EVENTOS =================
     def handle_events(self):
@@ -271,7 +285,7 @@ class Game:
 
             if event.type == pygame.KEYDOWN and self.input_active:
                 if event.key == pygame.K_RETURN:
-                    self.redefinir_grid()
+                    self.redefine_grid()
                 elif event.key == pygame.K_BACKSPACE:
                     self.user_text = self.user_text[:-1]
                 elif event.unicode.isdigit() and len(self.user_text) < 2:  # máximo 2 dígitos
@@ -279,7 +293,7 @@ class Game:
 
 
     def handle_click(self, pos):
-        # comprobamos botones - reiniciar llamará a spawn_random_enemies -------------> OJO BORRAR PRINTS CUANDO SE TERMINE EL PROYECTO
+        # comprobamos botones - reiniciar llamará a  -------------> OJO BORRAR PRINTS CUANDO SE TERMINE EL PROYECTO
         if self.btn_beam.collidepoint(pos):
             random.choice(self.button_sfx).play()
             print("Beam Search seleccionado")
@@ -288,10 +302,10 @@ class Game:
             print("Dynamic Weighting seleccionado")
         elif self.btn_reiniciar.collidepoint(pos):
             print("Reiniciar - reubicando enemigos")
-            self.spawn_random_enemies()   # <-- solo cuando el usuario lo pide
+            self.spawn_random_positions()   # <-- solo cuando el usuario lo pide
         elif self.btn_redefinir.collidepoint(pos):
             print("Redefinir - cambiando tamaño de grid")
-            self.redefinir_grid()
+            self.redefine_grid()
         elif self.btn_mute.collidepoint(pos):
             self.toggle_mute()
         elif self.btn_cerrar.collidepoint(pos):
@@ -333,7 +347,6 @@ class Game:
             )
             pygame.draw.rect(self.ROOT, (0, 255, 0), rect)  # verde fuerte
             pygame.draw.rect(self.ROOT, (0, 0, 0), rect, 2)  # borde negro opcional
-
 
         # Dibujar enemigos
         for enemy in self.enemies:
@@ -391,7 +404,6 @@ class Game:
             self.handle_events()
             self.update()
             self.draw()
-            # NO llamamos spawn_random_enemies aquí: solo al iniciar o al reiniciar
             self.clock.tick(60)
 
 if __name__ == "__main__":
