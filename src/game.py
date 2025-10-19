@@ -1,13 +1,3 @@
-"""
-CLASE PRINCIPAL DEL JUEGO - Controla toda la aplicación
-Responsabilidades:
-- Manejar la ventana de Pygame
-- Controlar el loop principal del juego
-- Gestionar eventos (clics, teclas, etc.)
-- Coordinar entre la hormiga, el grid y los algoritmos
-- Dibujar todo en pantalla
-"""
-# src/game.py
 import pygame, sys
 import random
 import tkinter as tk
@@ -61,14 +51,14 @@ class Game:
         # --- Área de juego (zona interna) ---
         self.GAME_AREA = pygame.Rect(120, 38, 500, 500)
 
-        # --- Crear grid lógico (5x5 con celdas de 100 px) ---
+        # --- Crear grid lógico (por defecto 8x8) ---
         self.grid = Grid(8, 8, self.GAME_AREA.width, self.GAME_AREA.height)
 
         # --- Guardar referencia a la clase Enemy para crear instancias ---
         self.enemy_class = Entity
 
         # --- Crear entidades fijas (player y goal) ---
-
+        # NOTA: player se colocará correctamente en spawn_random_positions()
         self.player = Player(10, 3, "assets/images & sprites/cute_hornet.png",
                      (self.GAME_AREA.x, self.GAME_AREA.y, self.GAME_AREA.width, self.GAME_AREA.height))
 
@@ -173,15 +163,16 @@ class Game:
         self.grid.clear_enemies()
         self.enemies = []
 
-        # --- Player ---
+        # --- Player --- (obtenemos celda aleatoria)
         player_cell = self.grid.get_random_empty_cell()
+        if not player_cell:
+            # fallback: esquina (0,0)
+            player_cell = (0, 0)
         self.grid.set_cell(*player_cell, 0)  # opcional, marcar como ocupado
 
         # --- Meta (Goal) con distancia mínima ---
-        # Definir distancia mínima basada en tamaño del grid
-        min_distance = max(1, self.grid.rows // 2)  # por ejemplo: 3x3 -> 1, 4x4 -> 2, etc.
+        min_distance = max(1, self.grid.rows // 2)  # distancia mínima aproximada
 
-        # Recoger todas las celdas válidas que cumplan distancia mínima
         valid_goal_cells = []
         for r in range(self.grid.rows):
             for c in range(self.grid.cols):
@@ -189,8 +180,12 @@ class Game:
                 if dist >= min_distance:
                     valid_goal_cells.append((r, c))
 
-        # Elegir aleatoriamente entre las válidas
-        goal_cell = random.choice(valid_goal_cells)
+        if not valid_goal_cells:
+            # fallback en esquina opuesta si no hay celdas válidas
+            goal_cell = (self.grid.rows - 1, self.grid.cols - 1)
+        else:
+            goal_cell = random.choice(valid_goal_cells)
+
         self.grid.set_cell(*goal_cell, 0)
         self.goal_cell = goal_cell
 
@@ -202,28 +197,24 @@ class Game:
                 count = min(self.grid.rows, self.grid.cols)
 
         # --- Enemies ---
-        # Para que “estorben” el camino, generaremos enemigos primero cerca del camino directo
         player_r, player_c = player_cell
         goal_r, goal_c = goal_cell
 
-        direct_path = []  # lista de celdas aproximadas entre player y goal
-        r_step = 1 if goal_r > player_r else -1
-        c_step = 1 if goal_c > player_c else -1
+        direct_path = []
+        r_step = 1 if goal_r >= player_r else -1
+        c_step = 1 if goal_c >= player_c else -1
 
-        # recorrer filas y columnas intermedias
         for r in range(player_r, goal_r + r_step, r_step):
             for c in range(player_c, goal_c + c_step, c_step):
-                direct_path.append((r, c))
+                if 0 <= r < self.grid.rows and 0 <= c < self.grid.cols:
+                    direct_path.append((r, c))
 
-        # Crear enemigos
         enemy_positions = set()
         for _ in range(count):
             pos = self.grid.get_random_empty_cell()
-            # 50% de probabilidad de estar cerca del camino directo
             if direct_path and random.random() < 0.5:
                 pos = random.choice(direct_path)
 
-            # evitar player y goal
             while pos in (player_cell, goal_cell) or pos in enemy_positions:
                 pos = self.grid.get_random_empty_cell()
                 if not pos:
@@ -271,10 +262,19 @@ class Game:
         self.goal.rect.topleft = (goal_x, goal_y)
         self.goal.resize_to_cell(self.grid.cell_size)
 
+        # --- Asignar referencias necesarias al player para modo automático ---
+        # Aseguramos que player tenga la referencia a la grid y la meta (tu Player debe usar estas)
+        self.player.grid = self.grid
+        self.player.cell_size = self.grid.cell_size
+        self.player.goal = self.goal_cell
+        # limpiar ruta previa (si existía)
+        self.player.path = []
+        self.player.path_index = 0
+        self.player.automatic_mode = False
+
         # --- Reset flags ---
         self.goal_highlight = None
         self.goal_reached = False
-
 
     
     def reset_positions(self):
@@ -326,14 +326,31 @@ class Game:
         if self.btn_beam.collidepoint(pos):
             random.choice(self.button_sfx).play()
             print("Beam Search seleccionado")
+            # calcular celdas start/goal y activar movimiento automático
+            start_cell = ((self.player.rect.y - self.GAME_AREA.y) // self.grid.cell_size,
+                          (self.player.rect.x - self.GAME_AREA.x) // self.grid.cell_size)
+            # asegurarse que goal_cell exista
+            if hasattr(self, 'goal_cell') and self.goal_cell:
+                # asignar referencias por si no estaban
+                self.player.grid = self.grid
+                self.player.cell_size = self.grid.cell_size
+                self.player.goal = self.goal_cell
+                # activar movimiento automático
+                self.player.enable_auto_move(start_cell, self.goal_cell)
+            else:
+                print("⚠️ No hay meta definida para iniciar Beam Search.")
         elif self.btn_dynamic.collidepoint(pos):
             random.choice(self.button_sfx).play()
-            print("Dynamic Weighting seleccionado")
+            print("Dynamic Weighting seleccionado (pendiente de implementar)")
         elif self.btn_reiniciar.collidepoint(pos):
             print("Reiniciar - reubicando enemigos")
+            # detener movimiento automático antes de reubicar
+            self.player.automatic_mode = False
             self.spawn_random_positions()   # <-- solo cuando el usuario lo pide
         elif self.btn_redefinir.collidepoint(pos):
             print("Redefinir - cambiando tamaño de grid")
+            # detener movimiento automático ya que grid cambiará
+            self.player.automatic_mode = False
             self.redefine_grid()
         elif self.btn_mute.collidepoint(pos):
             self.toggle_mute()
@@ -382,7 +399,7 @@ class Game:
 
         padding = 2  # margen dentro de la celda
 
-        # --- Player ---
+        # --- Player --- (dibujamos la celda en la que está)
         player_row = (self.player.rect.y - self.GAME_AREA.y) // self.grid.cell_size
         player_col = (self.player.rect.x - self.GAME_AREA.x) // self.grid.cell_size
         pygame.draw.rect(self.ROOT, COLOR_PLAYER,
