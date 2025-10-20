@@ -5,7 +5,8 @@ from tkinter import messagebox
 from player import Player
 from entity import Entity
 from grid import Grid
-
+from algorithms import beam_search
+    
 class Game:
     def __init__(self):
         #general
@@ -326,19 +327,28 @@ class Game:
         if self.btn_beam.collidepoint(pos):
             random.choice(self.button_sfx).play()
             print("Beam Search seleccionado")
-            # calcular celdas start/goal y activar movimiento automático
-            start_cell = ((self.player.rect.y - self.GAME_AREA.y) // self.grid.cell_size,
-                          (self.player.rect.x - self.GAME_AREA.x) // self.grid.cell_size)
-            # asegurarse que goal_cell exista
-            if hasattr(self, 'goal_cell') and self.goal_cell:
-                # asignar referencias por si no estaban
-                self.player.grid = self.grid
-                self.player.cell_size = self.grid.cell_size
-                self.player.goal = self.goal_cell
-                # activar movimiento automático
-                self.player.enable_auto_move(start_cell, self.goal_cell)
+            player_row = (self.player.rect.y - self.GAME_AREA.y) // self.grid.cell_size
+            player_col = (self.player.rect.x - self.GAME_AREA.x) // self.grid.cell_size
+            start = (player_row, player_col)
+            goal = self.goal_cell
+            
+            matrix = [[1 if self.grid.get_cell(r, c) == 2 else 0
+                       for c in range(self.grid.cols)]
+                      for r in range(self.grid.rows)]
+            
+            path = beam_search(matrix, start, goal)
+            
+            if path:
+                print("Camino encontrado:", path)
+                for (r, c) in path:
+                    px = self.GAME_AREA.x + c * self.grid.cell_size + 5
+                    py = self.GAME_AREA.y + r * self.grid.cell_size + 5
+                    self.player.rect.topleft = (px, py)
+                    self.draw()
+                    pygame.time.wait(200)
+                self.handle_goal_reached()
             else:
-                print("⚠️ No hay meta definida para iniciar Beam Search.")
+                print("no se encontro camino")
         elif self.btn_dynamic.collidepoint(pos):
             random.choice(self.button_sfx).play()
             print("Dynamic Weighting seleccionado (pendiente de implementar)")

@@ -6,52 +6,56 @@ Responsabilidades:
 - Calcular f(n) = g(n) + h(n) + ε * (1 - (d(n)/N)) * h(n)
 - Devolver el camino óptimo para la hormiga
 """
-def manhattan(a, b):
-    """Distancia Manhattan entre dos celdas (tuplas (fila, columna))"""
+import heapq
+import math
+
+def heuristic(a, b):
+    """Distancia Manhattan."""
     return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
-
-def beam_search(start, goal, grid_obj, beam_width=3):
+def beam_search(matrix, start, goal, beam_width=3):
     """
-    Implementación de Beam Search adaptada al objeto Grid.
-    - grid_obj: instancia de la clase Grid (con .rows, .cols y .matrix)
-    - start, goal: tuplas (fila, columna)
-    - beam_width: cantidad máxima de nodos por nivel
+    Implementación de Beam Search.
+    - matrix: matriz 2D (0 = libre, 1 = obstáculo)
+    - start: tupla (fila, col)
+    - goal: tupla (fila, col)
+    - beam_width: número máximo de nodos a explorar por nivel
     """
-    # Extraemos la matriz interna de la Grid (suponiendo que tiene atributo .matrix)
-    matrix = getattr(grid_obj, "matrix", None)
-    if matrix is None:
-        raise ValueError("El objeto Grid no tiene atributo 'matrix' (asegúrate de implementarlo).")
+    rows, cols = len(matrix), len(matrix[0])
+    directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]  # 4 direcciones cardinales
 
-    def get_neighbors(pos):
-        (x, y) = pos
-        moves = [(0, 1), (0, -1), (1, 0), (-1, 0)]
-        result = []
-        for dx, dy in moves:
-            nx, ny = x + dx, y + dy
-            if 0 <= nx < grid_obj.rows and 0 <= ny < grid_obj.cols:
-                # 0 = libre, 2 = enemigo (obstáculo)
-                if matrix[nx][ny] != 2:
-                    result.append((nx, ny))
-        return result
+    # Cada elemento del beam: (heuristic + costo acumulado, posición actual, camino recorrido)
+    beam = [(heuristic(start, goal), start, [start])]
+    visited = set([start])
 
-    frontier = [(start, [start])]
-    explored = set()
+    while beam:
+        new_beam = []
 
-    while frontier:
-        # ordenar por heurística y mantener los mejores β
-        frontier = sorted(frontier, key=lambda x: manhattan(x[0], goal))[:beam_width]
-        new_frontier = []
+        # Expandir cada nodo en el beam actual
+        for _, current, path in beam:
+            if current == goal:
+                return path  # ¡Camino encontrado!
 
-        for node, path in frontier:
-            if node == goal:
-                return path  # camino encontrado
+            for dr, dc in directions:
+                nr, nc = current[0] + dr, current[1] + dc
+                neighbor = (nr, nc)
+                if (
+                    0 <= nr < rows and 0 <= nc < cols and
+                    matrix[nr][nc] == 0 and
+                    neighbor not in visited
+                ):
+                    visited.add(neighbor)
+                    new_cost = len(path) + heuristic(neighbor, goal)
+                    new_beam.append((new_cost, neighbor, path + [neighbor]))
 
-            explored.add(node)
-            for neighbor in get_neighbors(node):
-                if neighbor not in explored:
-                    new_frontier.append((neighbor, path + [neighbor]))
+        # Si no hay más nodos que expandir, detener
+        if not new_beam:
+            break
 
-        frontier = new_frontier
+        # Ordenar por el costo total (heurística + profundidad)
+        new_beam.sort(key=lambda x: x[0])
 
-    return None  # no se encontró camino
+        # Mantener solo los mejores beam_width nodos
+        beam = new_beam[:beam_width]
+
+    return None  # Si no se encontró camino
