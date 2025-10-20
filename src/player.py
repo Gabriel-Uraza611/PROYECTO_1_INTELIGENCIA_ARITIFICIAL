@@ -59,28 +59,6 @@ class Player(pygame.sprite.Sprite):
         else:
             print(" No se encontro un camino con Beam Search.")
 
-    def move_to_next_cell(self):
-        """Mueve al personaje a la siguiente celda con retardo controlado."""
-        now = pygame.time.get_ticks()  # tiempo actual en milisegundos
-        if self.path_index < len(self.path) and now - self.last_move_time >= self.move_delay:
-            cell = self.path[self.path_index]
-            self.rect.topleft = (cell[1] * self.cell_size, cell[0] * self.cell_size)
-            self.path_index += 1
-            self.last_move_time = now
-        elif self.path_index >= len(self.path):
-            self.automatic_mode = False
-            print("Hornet ha llegado a la meta.")
-
-   
-   
-    def update(self):
-        if self.automatic_mode:
-            # Movimiento automatico paso a paso
-            self.move_to_next_cell()
-
-            #limitar movimiento a los bordes del GAME_AREA
-            self.rect.x = max(self.bounds[0], min(self.rect.x, self.bounds[0] + self.bounds[2] - self.rect.width))
-            self.rect.y = max(self.bounds[1], min(self.rect.y, self.bounds[1] + self.bounds[3] - self.rect.height))
 
     def draw(self, surface):
         surface.blit(self.image, self.rect)
