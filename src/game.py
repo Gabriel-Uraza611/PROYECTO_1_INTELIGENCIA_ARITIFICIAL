@@ -5,7 +5,7 @@ from tkinter import messagebox
 from player import Player
 from entity import Entity
 from grid import Grid
-from algorithms import beam_search
+from algorithms import beam_search, dynamic_weighting_search
     
 class Game:
     def __init__(self):
@@ -323,7 +323,6 @@ class Game:
 
 
     def handle_click(self, pos):
-        # comprobamos botones - reiniciar llamará a  -------------> OJO BORRAR PRINTS CUANDO SE TERMINE EL PROYECTO
         if self.btn_beam.collidepoint(pos):
             random.choice(self.button_sfx).play()
             print("Beam Search seleccionado")
@@ -351,7 +350,30 @@ class Game:
                 print("no se encontro camino")
         elif self.btn_dynamic.collidepoint(pos):
             random.choice(self.button_sfx).play()
-            print("Dynamic Weighting seleccionado (pendiente de implementar)")
+            print("Dynamic Weighting seleccionado")
+            player_row = (self.player.rect.y - self.GAME_AREA.y) // self.grid.cell_size
+            player_col = (self.player.rect.x - self.GAME_AREA.x) // self.grid.cell_size
+            start = (player_row, player_col)
+            goal = self.goal_cell
+            
+        # --- construir el mapa lógico (1 = obstáculo, 0 = libre) ---
+            matrix = [[1 if self.grid.get_cell(r, c) == 2 else 0
+                       for c in range(self.grid.cols)]
+                      for r in range(self.grid.rows)]
+            
+            path = dynamic_weighting_search(matrix, start, goal)
+            
+            if path:
+                print("Camino encontrado:", path)
+                for (r, c) in path:
+                     px = self.GAME_AREA.x + c * self.grid.cell_size + 5
+                     py = self.GAME_AREA.y + r * self.grid.cell_size + 5
+                     self.player.rect.topleft = (px, py)
+                     self.draw()
+                     pygame.time.wait(200)
+                self.handle_goal_reached()
+            else:
+                print("No se encontró camino ")    
         elif self.btn_reiniciar.collidepoint(pos):
             print("Reiniciar - reubicando enemigos")
             # detener movimiento automático antes de reubicar

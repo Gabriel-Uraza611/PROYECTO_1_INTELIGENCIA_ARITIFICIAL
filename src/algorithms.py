@@ -59,3 +59,61 @@ def beam_search(matrix, start, goal, beam_width=3):
         beam = new_beam[:beam_width]
 
     return None  # Si no se encontró camino
+
+#Dynamic Weighting
+
+def heuristic(a, b):
+    #Distancia Manhattan
+    return abs(a[0] - b[0]) + abs(a[1] - b[1])
+
+def dynamic_weighting_search(matrix, start, goal):
+    """
+    Búsqueda con pesos dinámicos tipo A* mejorado.
+    matrix: matriz 2D con 0 = libre, 1 = obstáculo
+    start, goal: tuplas (fila, col)
+    """
+    rows, cols = len(matrix), len(matrix[0])
+    
+    # 8 direcciones posibles (N, S, E, O)
+    directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]
+
+    open_list = []
+    heapq.heappush(open_list, (0, start))
+    came_from = {}
+    g_score = {start: 0}
+
+    # factor de peso dinámico (va cambiando según la distancia)
+    base_weight = 1.5  
+
+    while open_list:
+        _, current = heapq.heappop(open_list)
+
+        if current == goal:
+            # reconstruir camino
+            path = []
+            while current in came_from:
+                path.append(current)
+                current = came_from[current]
+            path.append(start)
+            path.reverse()
+            return path
+
+        for dr, dc in directions:
+            nr, nc = current[0] + dr, current[1] + dc
+            if 0 <= nr < rows and 0 <= nc < cols and matrix[nr][nc] == 0:
+                new_cost = g_score[current] + 1
+
+                if (nr, nc) not in g_score or new_cost < g_score[(nr, nc)]:
+                    g_score[(nr, nc)] = new_cost
+
+                    # Ajusta peso dinámicamente según progreso hacia la meta
+                    dist_to_goal = heuristic((nr, nc), goal)
+                    total_dist = heuristic(start, goal)
+                    progress = 1 - (dist_to_goal / (total_dist + 1e-5))
+                    dynamic_weight = base_weight + progress  # aumenta conforme se acerca
+
+                    f_score = new_cost + dynamic_weight * heuristic((nr, nc), goal)
+                    heapq.heappush(open_list, (f_score, (nr, nc)))
+                    came_from[(nr, nc)] = current
+
+    return None  # si no hay camino
