@@ -61,11 +61,6 @@ def beam_search(matrix, start, goal, beam_width=3):
     return None  # Si no se encontró camino
 
 #Dynamic Weighting
-
-def heuristic(a, b):
-    #Distancia Manhattan
-    return abs(a[0] - b[0]) + abs(a[1] - b[1])
-
 def dynamic_weighting_search(matrix, start, goal):
     """
     Búsqueda con pesos dinámicos tipo A* mejorado.
