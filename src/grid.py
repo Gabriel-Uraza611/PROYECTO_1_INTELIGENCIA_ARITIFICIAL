@@ -1,11 +1,19 @@
 """
-CLASE DEL TABLERO/MATRIZ - Representa el mundo de la hormiga
+Módulo de gestión de cuadrícula para el entorno de búsqueda.
+
+Representa el mundo navegable donde ocurre la búsqueda pathfinding. Maneja
+la estructura lógica y visual del tablero, incluyendo obstáculos, áreas
+transitables y validación de movimientos.
+
 Responsabilidades:
-- Crear y mantener la matriz de celdas
-- Saber qué hay en cada posición (vacío, veneno, hongo)
-- Validar movimientos (qué posiciones puede visitar la hormiga)
-- Dibujar el grid en pantalla
-- Gestionar la colocación de elementos (venenos/hongos)
+    - Crear y mantener la matriz lógica del entorno
+    - Gestionar tipos de celdas (vacías, obstáculos, objetivos)
+    - Proporcionar utilidades para generación procedural
+    - Renderizar la cuadrícula visualmente
+    - Ofrecer métodos para acceso y modificación del estado del grid
+
+La clase Grid es fundamental para la representación espacial que los algoritmos
+de IA utilizan para planificar caminos y tomar decisiones.
 """
 
 # src/grid.py
@@ -13,6 +21,27 @@ import pygame
 import random
 
 class Grid:
+    
+    """Gestiona la cuadrícula lógica y visual del entorno de juego.
+    
+    Representa el mundo navegable donde los algoritmos de búsqueda operan.
+    Maneja la matriz de celdas, validación de posiciones y renderizado
+    del tablero visual.
+    
+    Atributos:
+        rows (int): Número de filas en la cuadrícula.
+        cols (int): Número de columnas en la cuadrícula.
+        cell_size (int): Tamaño en píxeles de cada celda.
+        matrix (list): Matriz 2D que representa el estado de cada celda.
+    
+    Métodos:
+        set_cell(r, c, value): Establece el valor de una celda específica.
+        get_cell(r, c): Obtiene el valor de una celda específica.
+        clear_enemies(): Elimina todos los enemigos del grid.
+        get_random_empty_cell(): Devuelve una celda vacía aleatoria.
+        draw(surface, offset_x, offset_y): Dibuja la cuadrícula en pantalla.
+    """
+    
     def __init__(self, rows, cols, area_width, area_height):
         self.rows = rows
         self.cols = cols
@@ -36,7 +65,7 @@ class Grid:
     def get_random_empty_cell(self):
         """Devuelve una celda vacía al azar (fila, col)."""
         empty_cells = [(r, c) for r in range(self.rows)
-                       for c in range(self.cols) if self.matrix[r][c] == 0]
+                        for c in range(self.cols) if self.matrix[r][c] == 0]
         return random.choice(empty_cells) if empty_cells else None
 
     def draw(self, surface, offset_x=0, offset_y=0):

@@ -1,26 +1,55 @@
 """
-ALGORITMOS DE BÚSQUEDA - El cerebro del proyecto
-Responsabilidades:
-- BEAM SEARCH: Encontrar camino limitando nodos por nivel
-- DYNAMIC WEIGHTING: Ajustar peso de heurística dinámicamente
-- Calcular f(n) = g(n) + h(n) + ε * (1 - (d(n)/N)) * h(n)
-- Devolver el camino óptimo para la hormiga
+Módulo de algoritmos de búsqueda pathfinding para inteligencia artificial.
+
+Implementa dos algoritmos de búsqueda heurística utilizados en el juego
+para encontrar caminos óptimos en entornos con obstáculos:
+
+Algoritmos implementados:
+    - Beam Search: Algoritmo que limita la exploración a los nodos más prometedores
+        en cada nivel, balanceando eficiencia y optimalidad
+    - Dynamic Weighting Search: Variante de A* que ajusta dinámicamente el peso
+        de la heurística basado en el progreso hacia el objetivo
+
+Funciones principales:
+    - beam_search(): Encuentra caminos limitando la amplitud de búsqueda
+    - dynamic_weighting_search(): Ajusta pesos heurísticos durante la exploración
+    - heuristic(): Calcula distancia Manhattan entre dos puntos
+
+Estos algoritmos forman el núcleo de la IA del juego, permitiendo la navegación
+autónoma del jugador a través de laberintos generados proceduralmente.
 """
 import heapq
-import math
 
 def heuristic(a, b):
-    """Distancia Manhattan."""
+    """Calcula la distancia Manhattan entre dos puntos.
+    
+    Args:
+        a (tuple): Coordenadas del primer punto (fila, columna).
+        b (tuple): Coordenadas del segundo punto (fila, columna).
+    
+    Returns:
+        int: Distancia Manhattan entre los puntos a y b.
+    """
     return abs(a[0] - b[0]) + abs(a[1] - b[1])
 
 def beam_search(matrix, start, goal, beam_width=3):
+    """Implementa el algoritmo Beam Search para pathfinding.
+    
+    Encuentra un camino desde el punto inicial al objetivo explorando
+    solo los nodos más prometedores en cada nivel, utilizando una
+    búsqueda heurística con amplitud limitada.
+    
+    Args:
+        matrix (list): Matriz 2D donde 0=libre, 1=obstáculo.
+        start (tuple): Coordenadas de inicio (fila, columna).
+        goal (tuple): Coordenadas del objetivo (fila, columna).
+        beam_width (int): Número máximo de nodos por nivel (default: 3).
+    
+    Returns:
+        list or None: Lista de coordenadas del camino encontrado 
+                    o None si no hay camino posible.
     """
-    Implementación de Beam Search.
-    - matrix: matriz 2D (0 = libre, 1 = obstáculo)
-    - start: tupla (fila, col)
-    - goal: tupla (fila, col)
-    - beam_width: número máximo de nodos a explorar por nivel
-    """
+    
     rows, cols = len(matrix), len(matrix[0])
     directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]  # 4 direcciones cardinales
 
@@ -62,10 +91,20 @@ def beam_search(matrix, start, goal, beam_width=3):
 
 #Dynamic Weighting
 def dynamic_weighting_search(matrix, start, goal):
-    """
-    Búsqueda con pesos dinámicos tipo A* mejorado.
-    matrix: matriz 2D con 0 = libre, 1 = obstáculo
-    start, goal: tuplas (fila, col)
+    """Implementa búsqueda con pesos dinámicos tipo A* mejorado.
+    
+    Variante de A* que ajusta dinámicamente el peso de la heurística
+    basándose en el progreso hacia el objetivo, mejorando la eficiencia
+    en entornos complejos.
+    
+    Args:
+        matrix (list): Matriz 2D donde 0=libre, 1=obstáculo.
+        start (tuple): Coordenadas de inicio (fila, columna).
+        goal (tuple): Coordenadas del objetivo (fila, columna).
+    
+    Returns:
+        list or None: Camino encontrado como lista de coordenadas
+                    o None si no existe camino.
     """
     rows, cols = len(matrix), len(matrix[0])
     
