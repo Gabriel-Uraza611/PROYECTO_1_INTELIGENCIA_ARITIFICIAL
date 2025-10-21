@@ -73,12 +73,12 @@ class Game:
 
         #MUSIQUITA
         pygame.mixer.music.load("assets/audio/OST.mp3")
-        pygame.mixer.music.set_volume(0.5)
+        pygame.mixer.music.set_volume(0.2)
         pygame.mixer.music.play(-1)
 
         #MUSIQUITA JUEGO ALCANZADO
         self.goal_sound = pygame.mixer.Sound("assets/audio/get_goal_sfx.mp3")
-        self.goal_sound.set_volume(0.6)
+        self.goal_sound.set_volume(0.2)
         self.goal_reached = False
         self.goal_highlight = None
 
@@ -94,7 +94,7 @@ class Game:
         # Convertirlos en objetos Sound
         self.button_sfx = [pygame.mixer.Sound(path) for path in self.button_sfx_files]
         for s in self.button_sfx:
-            s.set_volume(0.3)
+            s.set_volume(0.1)
 
         # --- Dimensiones generales ---
         self.width, self.height= 1024, 576
@@ -108,6 +108,8 @@ class Game:
 
         # --- Crear grid lógico (por defecto 8x8) ---
         self.grid = Grid(8, 8, self.GAME_AREA.width, self.GAME_AREA.height)
+        
+        self.last_path = []  # Para guardar la última ruta encontrada
 
         # --- Guardar referencia a la clase Enemy para crear instancias ---
         self.enemy_class = Entity
@@ -150,7 +152,8 @@ class Game:
         self.btn_dynamic = pygame.Rect(self.panel_rect.x + 128, self.panel_rect.y + 60, 110, 40)
         self.btn_redefinir = pygame.Rect(self.panel_rect.x + 120, self.panel_rect.y + 188, 90, 40)
         self.btn_reiniciar = pygame.Rect(self.panel_rect.x + 30, self.panel_rect.y +  188, 80, 40)
-        self.btn_cerrar = pygame.Rect(self.panel_rect.x + 70, self.panel_rect.y + 235, 90, 40)
+        self.btn_cerrar = pygame.Rect(self.panel_rect.x + 70, self.panel_rect.y + 310, 90, 40)
+        self.btn_reiniciar_ruta = pygame.Rect(self.panel_rect.x + 30, self.panel_rect.y + 235, 180, 40)
 
     #  METODOS GENERALES
     def handle_goal_reached(self):
@@ -388,11 +391,17 @@ class Game:
             matrix = [[1 if self.grid.get_cell(r, c) == 2 else 0
                     for c in range(self.grid.cols)]
                     for r in range(self.grid.rows)]
+            
+            player_x, player_y = self.player.rect.topleft
+            start_col = (player_x - self.GAME_AREA.x) // self.grid.cell_size
+            start_row = (player_y - self.GAME_AREA.y) // self.grid.cell_size
+            self.start_pos = (start_row, start_col)
 
             path = beam_search(matrix, start, goal)
 
             if path:
                 print("Camino encontrado:", path)
+                self.last_path = path
                 for (r, c) in path:
                     px = self.GAME_AREA.x + c * self.grid.cell_size + 5
                     py = self.GAME_AREA.y + r * self.grid.cell_size + 5
@@ -414,11 +423,17 @@ class Game:
             matrix = [[1 if self.grid.get_cell(r, c) == 2 else 0
                     for c in range(self.grid.cols)]
                     for r in range(self.grid.rows)]
+            player_x, player_y = self.player.rect.topleft
+            start_col = (player_x - self.GAME_AREA.x) // self.grid.cell_size
+            start_row = (player_y - self.GAME_AREA.y) // self.grid.cell_size
+            self.start_pos = (start_row, start_col)
+            
 
             path = dynamic_weighting_search(matrix, start, goal)
 
             if path:
                 print("Camino encontrado:", path)
+                self.last_path = path
                 for (r, c) in path:
                     px = self.GAME_AREA.x + c * self.grid.cell_size + 5
                     py = self.GAME_AREA.y + r * self.grid.cell_size + 5
@@ -443,6 +458,21 @@ class Game:
         elif self.btn_cerrar.collidepoint(pos):
             pygame.quit()
             sys.exit()
+        
+        elif self.btn_reiniciar_ruta.collidepoint(pos):
+            print("Reiniciar solo la ruta actual")
+            self.last_path = []
+            self.goal_reached = False
+            
+            if hasattr(self, "start_pos"):
+                start_row, start_col = self.start_pos
+            else:
+                start_row, start_col = (0, 0)
+            
+            self.player.rect.topleft = (
+                self.GAME_AREA.x + start_col * self.grid.cell_size + 5,
+                self.GAME_AREA.y + start_row * self.grid.cell_size + 5
+            )
 
     def toggle_mute(self):
         if self.muted:
@@ -475,25 +505,34 @@ class Game:
         COLOR_GOAL_REACHED = (0, 255, 0)  # verde
 
         # fondo global
-        self.ROOT.blit(self.background, (0, 0))
+        self.root.blit(self.background, (0, 0))
 
         # área de juego
-        pygame.draw.rect(self.ROOT, WHITE, self.GAME_AREA)
+        pygame.draw.rect(self.root, WHITE, self.GAME_AREA)
 
         #grid
-        self.grid.draw(self.ROOT, self.GAME_AREA.x, self.GAME_AREA.y)
+        self.grid.draw(self.root, self.GAME_AREA.x, self.GAME_AREA.y)
+        
+        if self.last_path:
+            COLOR_PATH = (0, 255, 0)
+            for (r, c) in self.last_path:
+                pygame.draw.rect(self.root, COLOR_PATH,
+                                 pygame.Rect(self.GAME_AREA.x + c * self.grid.cell_size + 3,
+                                             self.GAME_AREA.y + r * self.grid.cell_size + 3,
+                                             self.grid.cell_size - 6,
+                                             self.grid.cell_size - 6))
 
         padding = 2  # margen dentro de la celda
 
         # --- Player --- (dibujamos la celda en la que está)
         player_row = (self.player.rect.y - self.GAME_AREA.y) // self.grid.cell_size
         player_col = (self.player.rect.x - self.GAME_AREA.x) // self.grid.cell_size
-        pygame.draw.rect(self.ROOT, COLOR_PLAYER,
+        pygame.draw.rect(self.root, COLOR_PLAYER,
                         pygame.Rect(self.GAME_AREA.x + player_col * self.grid.cell_size + padding,
                                     self.GAME_AREA.y + player_row * self.grid.cell_size + padding,
                                     self.grid.cell_size - 2*padding,
                                     self.grid.cell_size - 2*padding))
-        pygame.draw.rect(self.ROOT, BLACK,
+        pygame.draw.rect(self.root, BLACK,
                         pygame.Rect(self.GAME_AREA.x + player_col * self.grid.cell_size,
                                     self.GAME_AREA.y + player_row * self.grid.cell_size,
                                     self.grid.cell_size,
@@ -502,13 +541,13 @@ class Game:
         # --- Colorear casilla de la meta ---
         goal_row, goal_col = self.goal_cell
         goal_color = COLOR_GOAL_REACHED if self.goal_reached else COLOR_GOAL
-        pygame.draw.rect(self.ROOT, goal_color,
+        pygame.draw.rect(self.root, goal_color,
                         pygame.Rect(self.GAME_AREA.x + goal_col * self.grid.cell_size + padding,
                                     self.GAME_AREA.y + goal_row * self.grid.cell_size + padding,
                                     self.grid.cell_size - 2*padding,
                                     self.grid.cell_size - 2*padding))
         # borde negro de la meta
-        pygame.draw.rect(self.ROOT, BLACK,
+        pygame.draw.rect(self.root, BLACK,
                         pygame.Rect(self.GAME_AREA.x + goal_col * self.grid.cell_size,
                                     self.GAME_AREA.y + goal_row * self.grid.cell_size,
                                     self.grid.cell_size, self.grid.cell_size), 2)
@@ -517,70 +556,70 @@ class Game:
         for enemy in self.enemies:
             enemy_row = (enemy.rect.y - self.GAME_AREA.y) // self.grid.cell_size
             enemy_col = (enemy.rect.x - self.GAME_AREA.x) // self.grid.cell_size
-            pygame.draw.rect(self.ROOT, COLOR_ENEMY,
+            pygame.draw.rect(self.root, COLOR_ENEMY,
                 pygame.Rect(self.GAME_AREA.x + enemy_col * self.grid.cell_size + padding,
                             self.GAME_AREA.y + enemy_row * self.grid.cell_size + padding,
                             self.grid.cell_size - 2*padding,
                             self.grid.cell_size - 2*padding))
-            pygame.draw.rect(self.ROOT, BLACK,
+            pygame.draw.rect(self.root, BLACK,
                 pygame.Rect(self.GAME_AREA.x + enemy_col * self.grid.cell_size,
                             self.GAME_AREA.y + enemy_row * self.grid.cell_size,
                             self.grid.cell_size,
                             self.grid.cell_size), 2)
 
         #borde game area
-        pygame.draw.rect(self.ROOT, BLACK, self.GAME_AREA, 6)
+        pygame.draw.rect(self.root, BLACK, self.GAME_AREA, 6)
 
         # Dibujar enemigos
         for enemy in self.enemies:
-            enemy.draw(self.ROOT)
+            enemy.draw(self.root)
 
         # Dibujar objetivo y jugador
-        self.goal.draw(self.ROOT)
-        self.ROOT.blit(self.player.image, (self.player.rect.x, self.player.rect.y))
+        self.goal.draw(self.root)
+        self.root.blit(self.player.image, (self.player.rect.x, self.player.rect.y))
 
         # Panel lateral y botones
         # Crear una superficie semitransparente para el panel
-        pygame.draw.rect(self.ROOT, (161, 240, 206), self.panel_rect, border_radius=15)
+        pygame.draw.rect(self.root, (161, 240, 206), self.panel_rect, border_radius=15)
 
         font = pygame.font.SysFont("Verdana", 18, bold=True)
-        self.ROOT.blit(font.render("Opciones de búsqueda", True, (0, 0, 0)),
+        self.root.blit(font.render("Opciones de búsqueda", True, (0, 0, 0)),
                     (self.panel_rect.x + 12, self.panel_rect.y + 20))
 
         # dibujar botones
         font_btn = pygame.font.SysFont("Verdana", 14, bold=True)
-        buttons = [self.btn_beam, self.btn_dynamic, self.btn_reiniciar,
-                self.btn_cerrar, self.btn_redefinir]
-
-        colors = [(86, 227, 159), (86, 227, 159), (86, 227, 159),
-                (239, 111, 108), (86, 227, 159)] #COLOR BOTONES
-
-        texts = ["Beam Search", "Dynamic W.",
-                "Reiniciar", "Cerrar", "Redefinir"]
+        buttons = [self.btn_beam, self.btn_dynamic, self.btn_reiniciar_ruta, self.btn_reiniciar,
+                   self.btn_cerrar, self.btn_redefinir]
+        
+        colors = [(86, 227, 159), (86, 227, 159), (86, 227, 159), (86, 227, 159),
+                  (239, 111, 108), (86, 227, 159)] #COLOR BOTONES
+        
+        texts = ["Beam Search", "Dynamic W.", "Reiniciar Ruta", "Reiniciar",
+                 "Cerrar", "Redefinir"]
 
         for b, c, t in zip(buttons, colors, texts):
-            pygame.draw.rect(self.ROOT, c, b, border_radius=15)
+            pygame.draw.rect(self.root, c, b, border_radius=15)
             text_surf = font_btn.render(t, True, (0, 0, 0))
             text_rect = text_surf.get_rect(center=b.center)
-            self.ROOT.blit(text_surf, text_rect)
+            self.root.blit(text_surf, text_rect)
 
         # --- campo de entrada ---
-        pygame.draw.rect(self.ROOT, self.input_color, self.input_box, 2)
+        pygame.draw.rect(self.root, self.input_color, self.input_box, 2)
         font_input = pygame.font.SysFont("Verdana", 18, bold=True)
         txt_surface = font_input.render(self.user_text, True, (0, 0, 0))
-        self.ROOT.blit(txt_surface, (self.input_box.x + 5, self.input_box.y + 3))
-        self.ROOT.blit(font_input.render("Tamaño:", True, (0, 0, 0)),
+        self.root.blit(txt_surface, (self.input_box.x + 5, self.input_box.y + 3))
+        self.root.blit(font_input.render("Tamaño:", True, (0, 0, 0)),
                     (self.input_box.x, self.input_box.y - 25))
 
         # dibujar botón de mute
         color = (200, 0, 0) if self.muted else (0, 200, 0)
-        pygame.draw.rect(self.ROOT, color, self.btn_mute, border_radius=5)
+        pygame.draw.rect(self.root, color, self.btn_mute, border_radius=5)
 
         font_small = pygame.font.SysFont("Verdana", 12, bold=True)
         text = "Mute" if not self.muted else "UnMute"
         text_surf = font_small.render(text, True, (255, 255, 255))
         text_rect = text_surf.get_rect(center=self.btn_mute.center)
-        self.ROOT.blit(text_surf, text_rect)
+        self.root.blit(text_surf, text_rect)
 
         pygame.display.update()
 
