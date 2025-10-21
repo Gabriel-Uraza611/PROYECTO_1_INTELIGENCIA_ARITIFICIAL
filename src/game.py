@@ -19,12 +19,12 @@ class Game:
 
         #MUSIQUITA
         pygame.mixer.music.load("assets/audio/OST.mp3")
-        pygame.mixer.music.set_volume(0.5)
+        pygame.mixer.music.set_volume(0.2)
         pygame.mixer.music.play(-1)
 
         #MUSIQUITA JUEGO ALCANZADO
         self.goal_sound = pygame.mixer.Sound("assets/audio/get_goal_sfx.mp3")
-        self.goal_sound.set_volume(0.6)
+        self.goal_sound.set_volume(0.2)
         self.goal_reached = False
         self.goal_highlight = None
 
@@ -39,7 +39,7 @@ class Game:
         # Convertirlos en objetos Sound
         self.button_sfx = [pygame.mixer.Sound(path) for path in self.button_sfx_files]
         for s in self.button_sfx:
-            s.set_volume(0.3)
+            s.set_volume(0.1)
 
 
         # --- Dimensiones generales ---
@@ -54,6 +54,8 @@ class Game:
 
         # --- Crear grid lógico (por defecto 8x8) ---
         self.grid = Grid(8, 8, self.GAME_AREA.width, self.GAME_AREA.height)
+
+        self.last_path = []  # Para guardar la última ruta encontrada
 
         # --- Guardar referencia a la clase Enemy para crear instancias ---
         self.enemy_class = Entity
@@ -97,7 +99,9 @@ class Game:
         self.btn_dynamic = pygame.Rect(self.panel_rect.x + 128, self.panel_rect.y + 60, 110, 40)
         self.btn_redefinir = pygame.Rect(self.panel_rect.x + 120, self.panel_rect.y + 188, 90, 40)
         self.btn_reiniciar = pygame.Rect(self.panel_rect.x + 30, self.panel_rect.y +  188, 80, 40)
-        self.btn_cerrar = pygame.Rect(self.panel_rect.x + 70, self.panel_rect.y + 235, 90, 40)
+        self.btn_cerrar = pygame.Rect(self.panel_rect.x + 70, self.panel_rect.y + 310, 90, 40)
+        self.btn_reiniciar_ruta = pygame.Rect(self.panel_rect.x + 30, self.panel_rect.y + 235, 180, 40)
+
 
     #  METODOS GENERALES
     def handle_goal_reached(self):
@@ -335,10 +339,16 @@ class Game:
                        for c in range(self.grid.cols)]
                       for r in range(self.grid.rows)]
             
+            player_x, player_y = self.player.rect.topleft
+            start_col = (player_x - self.GAME_AREA.x) // self.grid.cell_size
+            start_row = (player_y - self.GAME_AREA.y) // self.grid.cell_size
+            self.start_pos = (start_row, start_col)
+            
             path = beam_search(matrix, start, goal)
             
             if path:
                 print("Camino encontrado:", path)
+                self.last_path = path
                 for (r, c) in path:
                     px = self.GAME_AREA.x + c * self.grid.cell_size + 5
                     py = self.GAME_AREA.y + r * self.grid.cell_size + 5
@@ -361,10 +371,16 @@ class Game:
                        for c in range(self.grid.cols)]
                       for r in range(self.grid.rows)]
             
+            player_x, player_y = self.player.rect.topleft
+            start_col = (player_x - self.GAME_AREA.x) // self.grid.cell_size
+            start_row = (player_y - self.GAME_AREA.y) // self.grid.cell_size
+            self.start_pos = (start_row, start_col)
+            
             path = dynamic_weighting_search(matrix, start, goal)
             
             if path:
                 print("Camino encontrado:", path)
+                self.last_path = path
                 for (r, c) in path:
                      px = self.GAME_AREA.x + c * self.grid.cell_size + 5
                      py = self.GAME_AREA.y + r * self.grid.cell_size + 5
@@ -389,7 +405,21 @@ class Game:
         elif self.btn_cerrar.collidepoint(pos):
             pygame.quit()
             sys.exit()
-    
+        elif self.btn_reiniciar_ruta.collidepoint(pos):
+            print("Reiniciar solo la ruta actual")
+            self.last_path = []
+            self.goal_reached = False
+            
+            if hasattr(self, "start_pos"):
+                start_row, start_col = self.start_pos
+            else:
+                start_row, start_col = (0, 0)
+            
+            self.player.rect.topleft = (
+                self.GAME_AREA.x + start_col * self.grid.cell_size + 5,
+                self.GAME_AREA.y + start_row * self.grid.cell_size + 5
+            )
+            
     def toggle_mute(self):
         if self.muted:
             pygame.mixer.music.set_volume(0.5)  # reactivar volumen
@@ -429,6 +459,14 @@ class Game:
         #grid
         self.grid.draw(self.ROOT, self.GAME_AREA.x, self.GAME_AREA.y)
 
+        if self.last_path:
+            COLOR_PATH = (0, 255, 0)
+            for (r, c) in self.last_path:
+                pygame.draw.rect(self.ROOT, COLOR_PATH,
+                                 pygame.Rect(self.GAME_AREA.x + c * self.grid.cell_size + 3,
+                                             self.GAME_AREA.y + r * self.grid.cell_size + 3,
+                                             self.grid.cell_size - 6,
+                                             self.grid.cell_size - 6))
         padding = 2  # margen dentro de la celda
 
         # --- Player --- (dibujamos la celda en la que está)
@@ -496,9 +534,9 @@ class Game:
 
         # dibujar botones
         font_btn = pygame.font.SysFont("Verdana", 14, bold=True)
-        buttons = [self.btn_beam, self.btn_dynamic, self.btn_reiniciar, self.btn_cerrar, self.btn_redefinir]
-        colors = [(86, 227, 159), (86, 227, 159), (86, 227, 159), (239, 111, 108), (86, 227, 159)] #COLOR BOTONES
-        texts = ["Beam Search", "Dynamic W.", "Reiniciar", "Cerrar", "Redefinir"]
+        buttons = [self.btn_beam, self.btn_dynamic, self.btn_reiniciar_ruta, self.btn_reiniciar, self.btn_cerrar, self.btn_redefinir]
+        colors = [(86, 227, 159), (86, 227, 159), (86, 227, 159), (86, 227, 159), (239, 111, 108), (86, 227, 159)] #COLOR BOTONES
+        texts = ["Beam Search", "Dynamic W.", "Reiniciar Ruta", "Reiniciar", "Cerrar", "Redefinir"]
 
         for b, c, t in zip(buttons, colors, texts):
             pygame.draw.rect(self.ROOT, c, b, border_radius=15)

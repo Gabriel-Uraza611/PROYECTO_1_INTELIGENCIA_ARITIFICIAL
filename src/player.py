@@ -61,4 +61,18 @@ class Player(pygame.sprite.Sprite):
 
 
     def draw(self, surface):
+        self.draw_path(surface)
         surface.blit(self.image, self.rect)
+    
+    def draw_path(self, surface):
+        """Dibuja la ruta encontrada en el grid."""
+        if not self.path or not self.grid:
+            return
+        for (r, c) in self.path:
+            rect = pygame.Rect(
+                c * self.cell_size,
+                r * self.cell_size,
+                self.cell_size,
+                self.cell_size
+            )
+            pygame.draw.rect(surface, (0, 255, 0), rect, 3)
