@@ -52,20 +52,6 @@
   </a>
 </p>
 
-### Descripción: 
-Vamos a resolver un problema clásico, donde la hormiga debe encontrar el hongo mágico, y
-puede pasar por venenos.
-El agente va a aplicar estas dos variaciones de los algoritmos que vimos en clase:
-  1. Beam Search: Es una versión de la búsqueda informada que limita la cantidad de nodos
-  que se mantienen en cada nivel (la "amplitud de la viga" o β). En cada nivel del árbol,
-  solo se expanden los β nodos más prometedores (según h(n) o f(n)), y el resto se
-  descartan permanentemente.
-  2. Dynamic Weighting: En lugar de un peso fijo ε como en Weighted A*, esta técnica ajusta
-  el peso de la heurística dinámicamente. Por ejemplo, f(n) = g(n) + h(n) + ε * (1 - (d(n)/N))
-  * h(n), donde d(n) es la profundidad. Da más peso a h(n) al principio de la búsqueda
-  (para alejarse rápido de la raíz) y menos peso cerca de la meta (para refinar la
-  búsqueda y garantizar optimalidad)
-
 # Descripción del Problema
 
 Este proyecto aborda un problema clásico de búsqueda en inteligencia artificial, donde **una hormiga debe encontrar el hongo mágico** dentro de un entorno lleno de obstáculos y posibles peligros como **venenos**.
@@ -78,19 +64,19 @@ El agente (la hormiga) explora el entorno aplicando **dos algoritmos de búsqued
 
 El algoritmo **Beam Search** es una variante **informada y optimizada** de la búsqueda en anchura (*Breadth-First Search*), que **limita el número de nodos explorados por nivel** según un parámetro llamado **amplitud de la viga** o **β (beta)**.
 
-En cada nivel del árbol de búsqueda, solo se conservan los **β nodos más prometedores**, evaluados según una función heurística (por ejemplo, \\( h(n) \\) o \\( f(n) \\)).
+En cada nivel del árbol de búsqueda, solo se conservan los **β nodos más prometedores**, evaluados según una función heurística (por ejemplo, $h(n)$ o $f(n)$).
 Los demás nodos se **descartan permanentemente**, lo que reduce el uso de memoria y acelera la búsqueda, a costa de sacrificar la garantía de optimalidad.
 
 ###  Fórmula general
 
-\\[
+$$
 f(n) = g(n) + h(n)
-\\]
+$$
 
 Donde:
-- \\( g(n) \\): costo acumulado desde el estado inicial hasta el nodo \\( n \\),
-- \\( h(n) \\): estimación heurística del costo restante hasta el objetivo,
-- Solo se expanden los \\( \beta \\) nodos con los valores más bajos de \\( f(n) \\).
+- $g(n)$: costo acumulado desde el estado inicial hasta el nodo $n$,
+- $h(n)$: estimación heurística del costo restante hasta el objetivo,
+- Solo se expanden los $\beta$ nodos con los valores más bajos de $f(n)$.
 
 ---
 
@@ -98,35 +84,36 @@ Donde:
 
 **Dynamic Weighting** es una extensión del algoritmo **Weighted A\***, en la que el **peso de la heurística varía dinámicamente** según la profundidad del nodo dentro del árbol de búsqueda.
 
-En lugar de usar un peso fijo \\( \varepsilon \\) para controlar la influencia de la heurística, se introduce un **factor adaptativo** que **reduce el peso de \\( h(n) \\)** a medida que el agente se acerca al objetivo.
+En lugar de usar un peso fijo $\varepsilon$ para controlar la influencia de la heurística, se introduce un **factor adaptativo** que **reduce el peso de $h(n)$** a medida que el agente se acerca al objetivo.
 
 Esto permite al agente **explorar con mayor libertad al inicio** (priorizando la heurística) y **refinar el camino cerca del objetivo** (priorizando el costo real acumulado), equilibrando **eficiencia y optimalidad**.
 
-###  Fórmula de evaluación
+### Fórmula de evaluación
 
-\\[
-f(n) = g(n) + h(n) + \varepsilon \cdot \left(1 - \frac{d(n)}{N}\right) \cdot h(n)
-\\]
+$$
+f(n) = g(n) + h(n) + \varepsilon \left(1 - \frac{d(n)}{N}\right) h(n)
+$$
 
 Donde:
-- \\( g(n) \\): costo acumulado desde el inicio hasta \\( n \\),
-- \\( h(n) \\): valor heurístico estimado hasta la meta,
-- \\( \varepsilon \\): peso máximo inicial de la heurística,
-- \\( d(n) \\): profundidad actual del nodo \\( n \\),
-- \\( N \\): profundidad máxima esperada o límite de búsqueda.
+- $g(n)$: costo acumulado desde el inicio hasta $n$,
+- $h(n)$: valor heurístico estimado hasta la meta,
+- $\varepsilon$: peso máximo inicial de la heurística,
+- $d(n)$: profundidad actual del nodo $n$,
+- $N$: profundidad máxima esperada o límite de búsqueda.
 
 ---
 
-##  Comparación conceptual
+## Comparación conceptual
 
 | Característica | Beam Search | Dynamic Weighting |
 |----------------|-------------|-------------------|
 | **Tipo de búsqueda** | Heurística limitada | Heurística adaptativa |
-| **Parámetro clave** | Amplitud de viga \\( \beta \\) | Peso dinámico \\( \varepsilon (1 - d(n)/N) \\) |
+| **Parámetro clave** | Amplitud de viga $\beta$ | Peso dinámico $\varepsilon\,(1 - d(n)/N)$ |
 | **Ventaja** | Ahorra memoria y tiempo | Balancea velocidad y precisión |
 | **Desventaja** | Puede descartar el camino óptimo | Requiere cálculo de profundidad |
-| **Optimalidad** | No garantizada | Potencialmente óptima (si se ajusta bien \\( \varepsilon \\)) |
+| **Optimalidad** | No garantizada | Potencialmente óptima (si se ajusta bien $\varepsilon$) |
 
 ---
 
 *Ambos métodos representan enfoques heurísticos que equilibran entre la eficiencia de búsqueda y la calidad de la solución, ofreciendo diferentes estrategias para la toma de decisiones del agente en entornos complejos.*
+
