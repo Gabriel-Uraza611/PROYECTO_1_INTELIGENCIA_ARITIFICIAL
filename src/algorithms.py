@@ -49,7 +49,7 @@ def beam_search(matrix, start, goal, beam_width=3):
         list or None: Lista de coordenadas del camino encontrado 
                     o None si no hay camino posible.
     """
-    
+
     rows, cols = len(matrix), len(matrix[0])
     directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]  # 4 direcciones cardinales
 
@@ -107,7 +107,7 @@ def dynamic_weighting_search(matrix, start, goal):
                     o None si no existe camino.
     """
     rows, cols = len(matrix), len(matrix[0])
-    
+
     # 8 direcciones posibles (N, S, E, O)
     directions = [(-1, 0), (1, 0), (0, -1), (0, 1)]
 
@@ -117,7 +117,7 @@ def dynamic_weighting_search(matrix, start, goal):
     g_score = {start: 0}
 
     # factor de peso dinámico (va cambiando según la distancia)
-    base_weight = 1.5  
+    base_weight = 1.5
 
     while open_list:
         _, current = heapq.heappop(open_list)

@@ -48,4 +48,5 @@ class Entity(pygame.sprite.Sprite):
 
 
     def draw(self, surface):
+        """Dibuja la entidad en la superficie dada."""
         surface.blit(self.image, self.rect)

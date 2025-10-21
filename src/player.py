@@ -16,12 +16,13 @@ El jugador actúa como el vehículo demostrativo principal para visualizar cómo
 los algoritmos de búsqueda resuelven problemas de pathfinding en tiempo real.
 """
 
-import pygame
-from algorithms import beam_search
 import threading
 import tkinter as tk
 from tkinter import messagebox
-from algorithms import beam_search, dynamic_weighting_search
+
+import pygame
+
+from algorithms import beam_search   # pylint: disable=wrong-import-order
 
 class Player(pygame.sprite.Sprite):
     """Representa al agente jugador controlado por algoritmos de IA.
@@ -45,7 +46,7 @@ class Player(pygame.sprite.Sprite):
         enable_auto_move(start_cell, goal_cell): Activa movimiento automático.
         draw(surface): Renderiza al jugador en pantalla.
     """
-    
+
     def __init__(self, x, y, image_path, bounds, grid=None, goal=None, cell_size=80, beam_width=3):
         super().__init__()
         self.image = pygame.image.load(image_path).convert_alpha()
@@ -94,9 +95,14 @@ class Player(pygame.sprite.Sprite):
             print(" No se encontro un camino con Beam Search.")
 
     def draw(self, surface):
+        """Dibuja el jugador y su ruta en el grid.
+
+        Args:
+        surface (pygame.Surface): Superficie donde se dibuja el jugador.
+        """
         self.draw_path(surface)
         surface.blit(self.image, self.rect)
-    
+
     def draw_path(self, surface):
         """Dibuja la ruta encontrada en el grid."""
         if not self.path or not self.grid:

@@ -29,15 +29,18 @@ Uso:
     >>> python game.py
 """
 
-import pygame
 import sys
 import random
 import tkinter as tk
 from tkinter import messagebox
+
+import pygame
+
 from player import Player
 from entity import Entity
 from grid import Grid
 from algorithms import beam_search, dynamic_weighting_search
+
 
 class Game:
     """Clase principal que gestiona el bucle del juego y la lógica central.
@@ -45,7 +48,7 @@ class Game:
     Coordina todos los componentes del juego: interfaz gráfica, entidades,
     algoritmos de búsqueda, sistema de audio y gestión de estados.
     Implementa el patrón MVC (Modelo-Vista-Controlador) para el juego.
-    
+
     Atributos:
         WIDTH, HEIGHT (int): Dimensiones de la ventana principal.
         ROOT (pygame.Surface): Superficie principal de renderizado.
@@ -66,7 +69,7 @@ class Game:
     """
     def __init__(self):
         #general
-        pygame.init()
+        pygame.init()  # pylint: disable=no-member
         pygame.mixer.init()
         pygame.display.set_caption("BeamSearch & DynamicWeighting")
         pygame.display.set_icon(pygame.image.load("assets/images & sprites/logo.png"))
@@ -104,11 +107,10 @@ class Game:
         self.clock = pygame.time.Clock()
 
         # --- Área de juego (zona interna) ---
-        self.GAME_AREA = pygame.Rect(120, 38, 500, 500)
+        self.game_area = pygame.Rect(120, 38, 500, 500)
 
         # --- Crear grid lógico (por defecto 8x8) ---
-        self.grid = Grid(8, 8, self.GAME_AREA.width, self.GAME_AREA.height)
-        
+        self.grid = Grid(8, 8, self.game_area.width, self.game_area.height)
         self.last_path = []  # Para guardar la última ruta encontrada
 
         # --- Guardar referencia a la clase Enemy para crear instancias ---
@@ -117,16 +119,16 @@ class Game:
         # --- Crear entidades fijas (player y goal) ---
         # NOTA: player se colocará correctamente en spawn_random_positions()
         self.player = Player(10, 3, "assets/images & sprites/cute_hornet.png",
-        (self.GAME_AREA.x, self.GAME_AREA.y, self.GAME_AREA.width, self.GAME_AREA.height))
+        (self.game_area.x, self.game_area.y, self.game_area.width, self.game_area.height))
 
         self.goal = Entity(400, 395, "assets/images & sprites/Seek_Quest_Icon.png",
-                        (self.GAME_AREA.width, self.GAME_AREA.height))
+                        (self.game_area.width, self.game_area.height))
 
         # --- Enemies list vacía inicialmente; serán generados aleatoriamente ---
         self.enemies = []
 
         # --- Panel lateral ---
-        self.panel_rect = pygame.Rect(self.GAME_AREA.width + 190, 110, 250, 300)
+        self.panel_rect = pygame.Rect(self.game_area.width + 190, 110, 250, 300)
 
         # --- Generar enemigos aleatorios (solo al iniciar) ---
         self.spawn_random_positions()
@@ -153,10 +155,20 @@ class Game:
         self.btn_redefinir = pygame.Rect(self.panel_rect.x + 120, self.panel_rect.y + 188, 90, 40)
         self.btn_reiniciar = pygame.Rect(self.panel_rect.x + 30, self.panel_rect.y +  188, 80, 40)
         self.btn_cerrar = pygame.Rect(self.panel_rect.x + 70, self.panel_rect.y + 310, 90, 40)
-        self.btn_reiniciar_ruta = pygame.Rect(self.panel_rect.x + 30, self.panel_rect.y + 235, 180, 40)
+        self.btn_reiniciar_ruta = pygame.Rect(
+            self.panel_rect.x + 30,
+            self.panel_rect.y + 235,
+            180,
+            40
+        )
 
     #  METODOS GENERALES
     def handle_goal_reached(self):
+        """Gestiona las acciones cuando el jugador alcanza la meta.
+
+        Pausa la música, reproduce el sonido de meta alcanzada,
+        marca la celda de la meta y programa la reanudación de la música.
+        """
         if not self.goal_reached:
             self.goal_reached = True
             print("Meta alcanzada")
@@ -171,9 +183,23 @@ class Game:
             self.goal_highlight = self.goal_cell
 
             # --- esperar un instante y reanudar música ---
-            pygame.time.set_timer(pygame.USEREVENT + 1, 1000)  # 1000 ms = 1 seg
+            pygame.time.set_timer(pygame.USEREVENT + 1, 1000)  # pylint: disable=no-member
 
-    def get_min_distance(rows, cols):
+    @staticmethod
+    def get_min_distance(
+        rows,
+        cols
+        ):
+        """Calcula la distancia mínima recomendada entre el jugador 
+        y la meta según el tamaño de la grid.
+
+        Args:
+        rows (int): Número de filas de la grid.
+        cols (int): Número de columnas de la grid.
+
+        Returns:
+        int: Distancia mínima sugerida.
+        """
         # mínimo entre filas y columnas para determinar escala
         size = min(rows, cols)
         if size <= 3:
@@ -200,7 +226,7 @@ class Game:
                 return
 
             # recrear la grid
-            self.grid = Grid(size, size, self.GAME_AREA.width, self.GAME_AREA.height)
+            self.grid = Grid(size, size, self.game_area.width, self.game_area.height)
             # regenerar enemigos y reposicionar
             self.spawn_random_positions()
             print(f"Grid redefinida a {size}x{size}")
@@ -283,8 +309,8 @@ class Game:
             self.grid.set_cell(r, c, 2)
             enemy_positions.add((r, c))
 
-            enemy_x = self.GAME_AREA.x + c * self.grid.cell_size + 5
-            enemy_y = self.GAME_AREA.y + r * self.grid.cell_size + 5
+            enemy_x = self.game_area.x + c * self.grid.cell_size + 5
+            enemy_y = self.game_area.y + r * self.grid.cell_size + 5
 
             image_path = random.choice([
                 "assets/images & sprites/B_Flintstone_Flyer.png",
@@ -303,19 +329,19 @@ class Game:
                 "assets/images & sprites/B_Pilgrim_Hiker.png",
             ])
             e = self.enemy_class(enemy_x, enemy_y, image_path,
-                                (self.GAME_AREA.width, self.GAME_AREA.height))
+                                (self.game_area.width, self.game_area.height))
             e.resize_to_cell(self.grid.cell_size)
             self.enemies.append(e)
 
         # --- Ajustar player ---
-        player_x = self.GAME_AREA.x + player_cell[1] * self.grid.cell_size + 5
-        player_y = self.GAME_AREA.y + player_cell[0] * self.grid.cell_size + 5
+        player_x = self.game_area.x + player_cell[1] * self.grid.cell_size + 5
+        player_y = self.game_area.y + player_cell[0] * self.grid.cell_size + 5
         self.player.rect.topleft = (player_x, player_y)
         self.player.resize_to_cell(self.grid.cell_size)
 
         # --- Ajustar goal ---
-        goal_x = self.GAME_AREA.x + goal_cell[1] * self.grid.cell_size + 5
-        goal_y = self.GAME_AREA.y + goal_cell[0] * self.grid.cell_size + 5
+        goal_x = self.game_area.x + goal_cell[1] * self.grid.cell_size + 5
+        goal_y = self.game_area.y + goal_cell[0] * self.grid.cell_size + 5
         self.goal.rect.topleft = (goal_x, goal_y)
         self.goal.resize_to_cell(self.grid.cell_size)
 
@@ -336,28 +362,33 @@ class Game:
     def reset_positions(self):
         """Coloca player y goal en los extremos del grid."""
         # esquina superior izquierda (fila 0, col 0)
-        player_x = self.GAME_AREA.x + 0 * self.grid.cell_size + 5
-        player_y = self.GAME_AREA.y + 0 * self.grid.cell_size + 5
+        player_x = self.game_area.x + 0 * self.grid.cell_size + 5
+        player_y = self.game_area.y + 0 * self.grid.cell_size + 5
 
         # esquina inferior derecha (última celda)
-        goal_x = self.GAME_AREA.x + (self.grid.cols - 1) * self.grid.cell_size + 5
-        goal_y = self.GAME_AREA.y + (self.grid.rows - 1) * self.grid.cell_size  + 5
+        goal_x = self.game_area.x + (self.grid.cols - 1) * self.grid.cell_size + 5
+        goal_y = self.game_area.y + (self.grid.rows - 1) * self.grid.cell_size  + 5
 
         # mover entidades
         self.player.rect.topleft = (player_x, player_y)
         self.goal.rect.topleft = (goal_x, goal_y)
 
-    # =============== EVENTOS =================
+    # =============== EVENTOS ===============
     def handle_events(self):
+        """Gestiona todos los eventos de entrada del usuario.
+
+        Procesa eventos de teclado, ratón y temporizador, incluyendo cierre de ventana,
+        interacción con botones, entrada de texto y control de la música.
+        """
         for event in pygame.event.get():
-            if event.type == pygame.QUIT:
-                pygame.quit()
+            if event.type == pygame.QUIT: # pylint: disable=no-member
+                pygame.quit()  # pylint: disable=no-member
                 sys.exit()
             # --- evento para reanudar música ---
-            if event.type == pygame.USEREVENT + 1:
+            if event.type == pygame.USEREVENT + 1: # pylint: disable=no-member
                 pygame.mixer.music.unpause()
-                pygame.time.set_timer(pygame.USEREVENT + 1, 0)  # desactiva el timer
-            if event.type == pygame.MOUSEBUTTONDOWN:
+                pygame.time.set_timer(pygame.USEREVENT + 1, 0) # pylint: disable=no-member # desactiva el timer
+            if event.type == pygame.MOUSEBUTTONDOWN: # pylint: disable=no-member
                 # activar o desactivar input box
                 if self.input_box.collidepoint(event.pos):
                     self.input_active = not self.input_active
@@ -371,31 +402,39 @@ class Game:
 
                 # manejo de botones
                 self.handle_click(event.pos)
-            if event.type == pygame.KEYDOWN and self.input_active:
-                if event.key == pygame.K_RETURN:
+            if event.type == pygame.KEYDOWN and self.input_active: # pylint: disable=no-member
+                if event.key == pygame.K_RETURN: # pylint: disable=no-member
                     self.redefine_grid()
-                elif event.key == pygame.K_BACKSPACE:
+                elif event.key == pygame.K_BACKSPACE: # pylint: disable=no-member
                     self.user_text = self.user_text[:-1]
                 elif event.unicode.isdigit() and len(self.user_text) < 2:  # máximo 2 dígitos
                     self.user_text += event.unicode
 
     def handle_click(self, pos):
+        """Gestiona las acciones asociadas a los botones del panel lateral y la cuadrícula.
+
+        Según el botón presionado, ejecuta el algoritmo de búsqueda seleccionado,
+        reinicia enemigos, redefine el tamaño de la grid, silencia la música,
+        cierra el juego o reinicia la ruta actual.
+    
+        Args:
+            pos (tuple): Posición (x, y) del clic del usuario.
+        """
         if self.btn_beam.collidepoint(pos):
             random.choice(self.button_sfx).play()
             print("Beam Search seleccionado")
-            player_row = (self.player.rect.y - self.GAME_AREA.y) // self.grid.cell_size
-            player_col = (self.player.rect.x - self.GAME_AREA.x) // self.grid.cell_size
+            player_row = (self.player.rect.y - self.game_area.y) // self.grid.cell_size
+            player_col = (self.player.rect.x - self.game_area.x) // self.grid.cell_size
             start = (player_row, player_col)
             goal = self.goal_cell
-
-            matrix = [[1 if self.grid.get_cell(r, c) == 2 else 0
-                    for c in range(self.grid.cols)]
-                    for r in range(self.grid.rows)]
-            
+            matrix = [
+                [1 if self.grid.get_cell(r, c) == 2 else 0 for c in range(self.grid.cols)]
+                for r in range(self.grid.rows)
+            ]
             player_x, player_y = self.player.rect.topleft
-            start_col = (player_x - self.GAME_AREA.x) // self.grid.cell_size
-            start_row = (player_y - self.GAME_AREA.y) // self.grid.cell_size
-            self.start_pos = (start_row, start_col)
+            start_col = (player_x - self.game_area.x) // self.grid.cell_size
+            start_row = (player_y - self.game_area.y) // self.grid.cell_size
+            self.start_pos = (start_row, start_col) # pylint: disable=attribute-defined-outside-init
 
             path = beam_search(matrix, start, goal)
 
@@ -403,8 +442,8 @@ class Game:
                 print("Camino encontrado:", path)
                 self.last_path = path
                 for (r, c) in path:
-                    px = self.GAME_AREA.x + c * self.grid.cell_size + 5
-                    py = self.GAME_AREA.y + r * self.grid.cell_size + 5
+                    px = self.game_area.x + c * self.grid.cell_size + 5
+                    py = self.game_area.y + r * self.grid.cell_size + 5
                     self.player.rect.topleft = (px, py)
                     self.draw()
                     pygame.time.wait(200)
@@ -414,8 +453,8 @@ class Game:
         elif self.btn_dynamic.collidepoint(pos):
             random.choice(self.button_sfx).play()
             print("Dynamic Weighting seleccionado")
-            player_row = (self.player.rect.y - self.GAME_AREA.y) // self.grid.cell_size
-            player_col = (self.player.rect.x - self.GAME_AREA.x) // self.grid.cell_size
+            player_row = (self.player.rect.y - self.game_area.y) // self.grid.cell_size
+            player_col = (self.player.rect.x - self.game_area.x) // self.grid.cell_size
             start = (player_row, player_col)
             goal = self.goal_cell
 
@@ -424,10 +463,9 @@ class Game:
                     for c in range(self.grid.cols)]
                     for r in range(self.grid.rows)]
             player_x, player_y = self.player.rect.topleft
-            start_col = (player_x - self.GAME_AREA.x) // self.grid.cell_size
-            start_row = (player_y - self.GAME_AREA.y) // self.grid.cell_size
-            self.start_pos = (start_row, start_col)
-            
+            start_col = (player_x - self.game_area.x) // self.grid.cell_size
+            start_row = (player_y - self.game_area.y) // self.grid.cell_size
+            self.start_pos = (start_row, start_col)  # pylint: disable=attribute-defined-outside-init
 
             path = dynamic_weighting_search(matrix, start, goal)
 
@@ -435,8 +473,8 @@ class Game:
                 print("Camino encontrado:", path)
                 self.last_path = path
                 for (r, c) in path:
-                    px = self.GAME_AREA.x + c * self.grid.cell_size + 5
-                    py = self.GAME_AREA.y + r * self.grid.cell_size + 5
+                    px = self.game_area.x + c * self.grid.cell_size + 5
+                    py = self.game_area.y + r * self.grid.cell_size + 5
                     self.player.rect.topleft = (px, py)
                     self.draw()
                     pygame.time.wait(200)
@@ -456,25 +494,23 @@ class Game:
         elif self.btn_mute.collidepoint(pos):
             self.toggle_mute()
         elif self.btn_cerrar.collidepoint(pos):
-            pygame.quit()
+            pygame.quit() # pylint: disable=no-member
             sys.exit()
-        
         elif self.btn_reiniciar_ruta.collidepoint(pos):
             print("Reiniciar solo la ruta actual")
             self.last_path = []
             self.goal_reached = False
-            
             if hasattr(self, "start_pos"):
                 start_row, start_col = self.start_pos
             else:
                 start_row, start_col = (0, 0)
-            
             self.player.rect.topleft = (
-                self.GAME_AREA.x + start_col * self.grid.cell_size + 5,
-                self.GAME_AREA.y + start_row * self.grid.cell_size + 5
+                self.game_area.x + start_col * self.grid.cell_size + 5,
+                self.game_area.y + start_row * self.grid.cell_size + 5
             )
 
     def toggle_mute(self):
+        """Activa o desactiva el estado de silencio de la música."""
         if self.muted:
             pygame.mixer.music.set_volume(0.5)  # reactivar volumen
             self.muted = False
@@ -484,6 +520,7 @@ class Game:
 
     # =============== ACTUALIZACIÓN =================
     def update(self):
+        """Actualiza el estado de todas las entidades del juego y verifica si se alcanzó la meta."""
         self.player.update()
         self.goal.update()
         for e in self.enemies:
@@ -496,79 +533,88 @@ class Game:
 
     # =============== DIBUJO =================
     def draw(self):
+        """Dibuja todos los elementos gráficos del juego en la ventana principal.
+
+        Renderiza el área de juego, la cuadrícula, el jugador, la meta, los enemigos,
+        los caminos, el panel lateral, los botones y los campos de entrada.
+        """
         #COLORES
-        WHITE = (255, 255, 255)
-        BLACK = (0, 0, 0)
-        COLOR_PLAYER = (244, 213, 0)   # amarillo
-        COLOR_ENEMY = (255, 0, 0)      # rojo
-        COLOR_GOAL = (0, 0, 255)       # azul
-        COLOR_GOAL_REACHED = (0, 255, 0)  # verde
+        white = (255, 255, 255)
+        black = (0, 0, 0)
+        color_player = (244, 213, 0)   # amarillo
+        color_enemy = (255, 0, 0)      # rojo
+        color_goal = (0, 0, 255)       # azul
+        color_goal_reached = (0, 255, 0)  # verde
 
         # fondo global
         self.root.blit(self.background, (0, 0))
 
         # área de juego
-        pygame.draw.rect(self.root, WHITE, self.GAME_AREA)
+        pygame.draw.rect(self.root, white, self.game_area)
 
         #grid
-        self.grid.draw(self.root, self.GAME_AREA.x, self.GAME_AREA.y)
-        
+        self.grid.draw(self.root, self.game_area.x, self.game_area.y)
+        # --- Dibujar la última ruta encontrada ---
         if self.last_path:
-            COLOR_PATH = (0, 255, 0)
+            color_path = (0, 255, 0)
             for (r, c) in self.last_path:
-                pygame.draw.rect(self.root, COLOR_PATH,
-                                 pygame.Rect(self.GAME_AREA.x + c * self.grid.cell_size + 3,
-                                             self.GAME_AREA.y + r * self.grid.cell_size + 3,
-                                             self.grid.cell_size - 6,
-                                             self.grid.cell_size - 6))
-
+                pygame.draw.rect(
+                    self.root,
+                    color_path,
+                    pygame.Rect(
+                        self.game_area.x + c * self.grid.cell_size + 3,
+                        self.game_area.y + r * self.grid.cell_size + 3,
+                        self.grid.cell_size - 6,
+                        self.grid.cell_size - 6
+                    )
+                )
         padding = 2  # margen dentro de la celda
 
         # --- Player --- (dibujamos la celda en la que está)
-        player_row = (self.player.rect.y - self.GAME_AREA.y) // self.grid.cell_size
-        player_col = (self.player.rect.x - self.GAME_AREA.x) // self.grid.cell_size
-        pygame.draw.rect(self.root, COLOR_PLAYER,
-                        pygame.Rect(self.GAME_AREA.x + player_col * self.grid.cell_size + padding,
-                                    self.GAME_AREA.y + player_row * self.grid.cell_size + padding,
+        player_row = (self.player.rect.y - self.game_area.y) // self.grid.cell_size
+        player_col = (self.player.rect.x - self.game_area.x) // self.grid.cell_size
+        pygame.draw.rect(self.root, color_player,
+                        pygame.Rect(self.game_area.x + player_col * self.grid.cell_size + padding,
+                                    self.game_area.y + player_row * self.grid.cell_size + padding,
                                     self.grid.cell_size - 2*padding,
                                     self.grid.cell_size - 2*padding))
-        pygame.draw.rect(self.root, BLACK,
-                        pygame.Rect(self.GAME_AREA.x + player_col * self.grid.cell_size,
-                                    self.GAME_AREA.y + player_row * self.grid.cell_size,
+        pygame.draw.rect(self.root, black,
+                        pygame.Rect(self.game_area.x + player_col * self.grid.cell_size,
+                                    self.game_area.y + player_row * self.grid.cell_size,
                                     self.grid.cell_size,
                                     self.grid.cell_size), 2)
 
         # --- Colorear casilla de la meta ---
         goal_row, goal_col = self.goal_cell
-        goal_color = COLOR_GOAL_REACHED if self.goal_reached else COLOR_GOAL
+        goal_color = color_goal_reached if self.goal_reached else color_goal
         pygame.draw.rect(self.root, goal_color,
-                        pygame.Rect(self.GAME_AREA.x + goal_col * self.grid.cell_size + padding,
-                                    self.GAME_AREA.y + goal_row * self.grid.cell_size + padding,
+                        pygame.Rect(self.game_area.x + goal_col * self.grid.cell_size + padding,
+                                    self.game_area.y + goal_row * self.grid.cell_size + padding,
                                     self.grid.cell_size - 2*padding,
                                     self.grid.cell_size - 2*padding))
         # borde negro de la meta
-        pygame.draw.rect(self.root, BLACK,
-                        pygame.Rect(self.GAME_AREA.x + goal_col * self.grid.cell_size,
-                                    self.GAME_AREA.y + goal_row * self.grid.cell_size,
+        pygame.draw.rect(self.root, black,
+                        pygame.Rect(self.game_area.x + goal_col * self.grid.cell_size,
+                                    self.game_area.y + goal_row * self.grid.cell_size,
                                     self.grid.cell_size, self.grid.cell_size), 2)
 
         # --- Enemigos ---
         for enemy in self.enemies:
-            enemy_row = (enemy.rect.y - self.GAME_AREA.y) // self.grid.cell_size
-            enemy_col = (enemy.rect.x - self.GAME_AREA.x) // self.grid.cell_size
-            pygame.draw.rect(self.root, COLOR_ENEMY,
-                pygame.Rect(self.GAME_AREA.x + enemy_col * self.grid.cell_size + padding,
-                            self.GAME_AREA.y + enemy_row * self.grid.cell_size + padding,
+            enemy_row = (enemy.rect.y - self.game_area.y) // self.grid.cell_size
+            enemy_col = (enemy.rect.x - self.game_area.x) // self.grid.cell_size
+            pygame.draw.rect(self.root, color_enemy,
+                pygame.Rect(self.game_area.x + enemy_col * self.grid.cell_size + padding,
+                            self.game_area.y + enemy_row * self.grid.cell_size + padding,
                             self.grid.cell_size - 2*padding,
                             self.grid.cell_size - 2*padding))
-            pygame.draw.rect(self.root, BLACK,
-                pygame.Rect(self.GAME_AREA.x + enemy_col * self.grid.cell_size,
-                            self.GAME_AREA.y + enemy_row * self.grid.cell_size,
+            pygame.draw.rect(self.root, black,
+                pygame.Rect(self.game_area.x + enemy_col * self.grid.cell_size,
+                            self.game_area.y + enemy_row * self.grid.cell_size,
                             self.grid.cell_size,
                             self.grid.cell_size), 2)
 
         #borde game area
-        pygame.draw.rect(self.root, BLACK, self.GAME_AREA, 6)
+        pygame.draw.rect(self.root, black, self.game_area, 6)
 
         # Dibujar enemigos
         for enemy in self.enemies:
@@ -590,12 +636,14 @@ class Game:
         font_btn = pygame.font.SysFont("Verdana", 14, bold=True)
         buttons = [self.btn_beam, self.btn_dynamic, self.btn_reiniciar_ruta, self.btn_reiniciar,
                    self.btn_cerrar, self.btn_redefinir]
-        
-        colors = [(86, 227, 159), (86, 227, 159), (86, 227, 159), (86, 227, 159),
-                  (239, 111, 108), (86, 227, 159)] #COLOR BOTONES
-        
-        texts = ["Beam Search", "Dynamic W.", "Reiniciar Ruta", "Reiniciar",
-                 "Cerrar", "Redefinir"]
+        colors = [
+            (86, 227, 159), (86, 227, 159), (86, 227, 159), (86, 227, 159),
+            (239, 111, 108), (86, 227, 159)
+            ]  # color botones
+        texts = [
+            "Beam Search", "Dynamic W.", "Reiniciar Ruta", "Reiniciar",
+            "Cerrar", "Redefinir"
+            ]
 
         for b, c, t in zip(buttons, colors, texts):
             pygame.draw.rect(self.root, c, b, border_radius=15)
@@ -625,6 +673,10 @@ class Game:
 
 # =============== LOOP =================
     def run(self):
+        """Ejecuta el bucle principal del juego.
+
+        Atiende eventos, actualiza el estado y dibuja la pantalla a 60 FPS.
+        """
         while True:
             self.handle_events()
             self.update()
